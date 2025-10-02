@@ -288,6 +288,13 @@ class ExportService {
 
       doc.pipe(stream);
 
+      // Register Chinese font
+      const fontPath = path.join(__dirname, '../node_modules/source-han-sans-cn/SourceHanSansCN-Regular.otf');
+      if (fs.existsSync(fontPath)) {
+        doc.registerFont('ChineseFont', fontPath);
+        doc.font('ChineseFont');
+      }
+
       // Title
       doc.fontSize(20).text('视频章节生成报告', { align: 'center' });
       doc.moveDown();

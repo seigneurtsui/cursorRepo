@@ -34,7 +34,7 @@ class GPTChapterService {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert video content analyzer. Your task is to analyze video transcripts and generate meaningful chapter divisions with titles and descriptions. You must respond in valid JSON format.'
+            content: 'You are an expert video content analyzer. Your task is to analyze video transcripts and generate meaningful chapter divisions with titles and descriptions. CRITICAL: You MUST respond ONLY with valid JSON format, no additional text, no explanations. Use double quotes for all strings. Ensure proper JSON syntax with commas between array elements.'
           },
           {
             role: 'user',
@@ -42,9 +42,10 @@ class GPTChapterService {
           }
         ],
         options: {
-          temperature: 0.7,
+          temperature: 0.3,  // Lower temperature for more consistent JSON output
           num_predict: 4000
         },
+        format: 'json',  // Request JSON format explicitly
         stream: false
       });
 
@@ -107,12 +108,31 @@ ${segments.slice(0, 50).map(s => `[${this.formatTime(s.startTime)} - ${this.form
   // Parse LLM JSON response
   parseGPTResponse(content) {
     try {
+      // Log raw response for debugging
+      console.log('📝 Raw LLM response length:', content.length);
+      
       // Extract JSON from markdown code blocks if present
       let jsonStr = content;
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
         jsonStr = jsonMatch[1];
+        console.log('📦 Extracted from code block');
       }
+
+      // Try to find JSON object in response
+      const jsonObjMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonObjMatch) {
+        jsonStr = jsonObjMatch[0];
+      }
+
+      // Clean up common JSON issues
+      jsonStr = jsonStr
+        .replace(/'/g, '"')  // Replace all single quotes with double quotes first
+        .replace(/,\s*([}\]])/g, '$1')  // Remove trailing commas
+        .replace(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')  // Quote unquoted keys
+        .trim();
+
+      console.log('🔧 Cleaned JSON string (first 200 chars):', jsonStr.substring(0, 200));
 
       const data = JSON.parse(jsonStr);
       
@@ -120,10 +140,12 @@ ${segments.slice(0, 50).map(s => `[${this.formatTime(s.startTime)} - ${this.form
         throw new Error('Invalid response format: missing chapters array');
       }
 
+      console.log(`✅ Successfully parsed ${data.chapters.length} chapters`);
+
       return data.chapters.map((ch, idx) => ({
         chapterIndex: ch.index || (idx + 1),
-        startTime: parseFloat(ch.startTime),
-        endTime: parseFloat(ch.endTime),
+        startTime: parseFloat(ch.startTime) || 0,
+        endTime: parseFloat(ch.endTime) || 0,
         title: ch.title || `Chapter ${idx + 1}`,
         description: ch.description || '',
         keyPoints: ch.keyPoints || []
@@ -131,6 +153,7 @@ ${segments.slice(0, 50).map(s => `[${this.formatTime(s.startTime)} - ${this.form
 
     } catch (error) {
       console.error('❌ Failed to parse LLM response:', error);
+      console.error('📄 Raw content (first 500 chars):', content.substring(0, 500));
       throw new Error(`Invalid LLM response format: ${error.message}`);
     }
   }

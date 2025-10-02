@@ -1,5 +1,5 @@
 // services/gpt-chapter.js - Azure OpenAI GPT-4 integration for intelligent chapter generation
-const { AzureOpenAI } = require('@azure/openai');
+const { OpenAIClient, AzureKeyCredential } = require('@azure/openai');
 require('dotenv').config();
 
 class GPTChapterService {
@@ -13,11 +13,10 @@ class GPTChapterService {
       console.warn('⚠️ Azure OpenAI credentials not configured. Chapter generation will use fallback method.');
     }
 
-    this.client = this.apiKey && this.endpoint ? new AzureOpenAI({
-      apiKey: this.apiKey,
-      apiVersion: this.apiVersion,
-      endpoint: this.endpoint
-    }) : null;
+    this.client = this.apiKey && this.endpoint ? new OpenAIClient(
+      this.endpoint,
+      new AzureKeyCredential(this.apiKey)
+    ) : null;
   }
 
   // Generate chapters from transcript using GPT-4
@@ -32,9 +31,9 @@ class GPTChapterService {
       
       console.log('🤖 Requesting GPT-4 to generate chapters...');
 
-      const response = await this.client.chat.completions.create({
-        model: this.deployment,
-        messages: [
+      const response = await this.client.getChatCompletions(
+        this.deployment,
+        [
           {
             role: 'system',
             content: 'You are an expert video content analyzer. Your task is to analyze video transcripts and generate meaningful chapter divisions with titles and descriptions. You must respond in valid JSON format.'
@@ -44,9 +43,11 @@ class GPTChapterService {
             content: prompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 4000
-      });
+        {
+          temperature: 0.7,
+          maxTokens: 4000
+        }
+      );
 
       const content = response.choices[0].message.content;
       console.log('✅ GPT-4 response received');

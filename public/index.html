@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频章节生成器 - Video Chapter Generator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <h1>🎬 视频章节生成器</h1>
+        <p class="subtitle">AI驱动的视频时间轴自动生成工具</p>
+      </div>
+      <div class="header-stats" id="headerStats">
+        <div class="stat-item">
+          <span class="stat-label">总视频</span>
+          <span class="stat-value" id="totalVideos">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">总章节</span>
+          <span class="stat-value" id="totalChapters">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">处理中</span>
+          <span class="stat-value processing" id="processingCount">0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Upload Section -->
+    <section class="upload-section">
+      <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept="video/*" multiple hidden>
+        <div class="upload-icon">📹</div>
+        <h3>上传视频文件</h3>
+        <p>点击或拖拽视频文件到此区域</p>
+        <p class="upload-hint">支持 MP4, AVI, MKV, MOV, FLV, WMV, WebM 等格式</p>
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+          选择文件
+        </button>
+      </div>
+
+      <!-- File List -->
+      <div id="selectedFiles" class="selected-files"></div>
+
+      <!-- Upload Button -->
+      <div id="uploadActions" class="upload-actions" style="display: none;">
+        <button class="btn btn-success" id="uploadBtn">
+          <span class="btn-icon">⬆️</span> 开始上传
+        </button>
+        <button class="btn btn-secondary" id="clearBtn">
+          <span class="btn-icon">🗑️</span> 清空列表
+        </button>
+      </div>
+    </section>
+
+    <!-- Search and Filter Section -->
+    <section class="filter-section">
+      <div class="filter-controls">
+        <div class="filter-group">
+          <label>🔍 关键字搜索</label>
+          <input type="text" id="searchKeyword" placeholder="输入文件名关键字...">
+        </div>
+        
+        <div class="filter-group">
+          <label>📊 状态筛选</label>
+          <select id="filterStatus">
+            <option value="">全部状态</option>
+            <option value="uploaded">已上传</option>
+            <option value="processing">处理中</option>
+            <option value="completed">已完成</option>
+            <option value="error">错误</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>📅 开始日期</label>
+          <input type="date" id="filterStartDate">
+        </div>
+
+        <div class="filter-group">
+          <label>📅 结束日期</label>
+          <input type="date" id="filterEndDate">
+        </div>
+
+        <div class="filter-group">
+          <button class="btn btn-primary" id="searchBtn">
+            <span class="btn-icon">🔍</span> 搜索
+          </button>
+          <button class="btn btn-secondary" id="resetBtn">
+            <span class="btn-icon">↻</span> 重置
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Export Section -->
+    <section class="export-section">
+      <h3>📤 导出数据</h3>
+      <div class="export-buttons">
+        <button class="btn btn-export" onclick="exportData('excel')">
+          <span class="btn-icon">📊</span> Excel
+        </button>
+        <button class="btn btn-export" onclick="exportData('csv')">
+          <span class="btn-icon">📄</span> CSV
+        </button>
+        <button class="btn btn-export" onclick="exportData('html')">
+          <span class="btn-icon">🌐</span> HTML
+        </button>
+        <button class="btn btn-export" onclick="exportData('pdf')">
+          <span class="btn-icon">📕</span> PDF
+        </button>
+        <button class="btn btn-export" onclick="exportData('markdown')">
+          <span class="btn-icon">📝</span> Markdown
+        </button>
+      </div>
+    </section>
+
+    <!-- Progress Section -->
+    <section class="progress-section" id="progressSection" style="display: none;">
+      <h3>⚙️ 处理进度</h3>
+      <div id="progressContainer"></div>
+    </section>
+
+    <!-- Video List Section -->
+    <section class="video-list-section">
+      <div class="section-header">
+        <h3>📹 视频列表</h3>
+        <div class="pagination-controls">
+          <label>每页显示：</label>
+          <select id="pageSize">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="ALL">全部</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="videoList" class="video-list">
+        <div class="loading">加载中...</div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+    </section>
+  </div>
+
+  <!-- Modal for video details -->
+  <div id="videoModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

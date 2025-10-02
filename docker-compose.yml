@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: video-chapters-db
+    environment:
+      POSTGRES_DB: video_chapters
+      POSTGRES_USER: video_user
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U video_user -d video_chapters"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: video-chapter-generator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: video_chapters
+      DATABASE_USER: video_user
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-secure_password}
+      PORT: 3000
+      NODE_ENV: production
+      # Whisper configuration
+      WHISPER_MODEL_PATH: ${WHISPER_MODEL_PATH}
+      WHISPER_EXECUTABLE_PATH: ${WHISPER_EXECUTABLE_PATH}
+      # Azure OpenAI configuration
+      AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2024-02-01}
+      # Notification configuration (optional)
+      WXPUSHER_TOKEN: ${WXPUSHER_TOKEN}
+      WXPUSHER_UID: ${WXPUSHER_UID}
+      PUSHPLUS_TOKEN: ${PUSHPLUS_TOKEN}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_TO_EMAIL: ${RESEND_TO_EMAIL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./temp:/app/temp
+      - ./exports:/app/exports
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

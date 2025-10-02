@@ -448,7 +448,17 @@ async function viewChapters(videoId) {
             <span class="meta-value">${chapters.length}</span>
           </div>
         </div>
-        <h3>📑 章节列表</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="margin: 0;">📑 章节列表</h3>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="copyChaptersToClipboard(${videoId})" style="padding: 8px 16px; font-size: 14px;">
+              📋 复制
+            </button>
+            <button class="btn btn-primary" onclick="exportChaptersToTxt(${videoId})" style="padding: 8px 16px; font-size: 14px;">
+              💾 导出 TXT
+            </button>
+          </div>
+        </div>
         <div class="chapter-list">
           ${chapters.length > 0 ? chapters.map(ch => `
             <div class="chapter-item">
@@ -501,6 +511,112 @@ async function deleteVideo(videoId) {
   } catch (error) {
     console.error('Delete error:', error);
     showToast('删除失败: ' + error.message, 'error');
+  }
+}
+
+// Copy chapters to clipboard
+async function copyChaptersToClipboard(videoId) {
+  try {
+    const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+    const result = await response.json();
+
+    if (result.success) {
+      const video = result.data;
+      const chapters = video.chapters || [];
+
+      if (chapters.length === 0) {
+        showToast('暂无章节可复制', 'warning');
+        return;
+      }
+
+      // Format chapters as text
+      let text = `📹 ${video.original_name}\n`;
+      text += `⏱️ 时长: ${formatDuration(video.duration)}\n`;
+      text += `📊 章节数: ${chapters.length}\n`;
+      text += `\n${'='.repeat(50)}\n\n`;
+
+      chapters.forEach((ch, idx) => {
+        text += `📑 第 ${ch.chapter_index} 章\n`;
+        text += `🕐 时间: ${formatDuration(ch.start_time)} - ${formatDuration(ch.end_time)}\n`;
+        text += `📌 标题: ${ch.title}\n`;
+        if (ch.description) {
+          text += `📝 描述: ${ch.description}\n`;
+        }
+        if (idx < chapters.length - 1) {
+          text += `\n${'-'.repeat(50)}\n\n`;
+        }
+      });
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(text);
+      showToast('✅ 章节内容已复制到剪贴板！', 'success');
+    }
+  } catch (error) {
+    console.error('Copy error:', error);
+    showToast('复制失败: ' + error.message, 'error');
+  }
+}
+
+// Export chapters to TXT file
+async function exportChaptersToTxt(videoId) {
+  try {
+    const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+    const result = await response.json();
+
+    if (result.success) {
+      const video = result.data;
+      const chapters = video.chapters || [];
+
+      if (chapters.length === 0) {
+        showToast('暂无章节可导出', 'warning');
+        return;
+      }
+
+      // Format chapters as text
+      let text = `视频章节列表\n`;
+      text += `${'='.repeat(60)}\n\n`;
+      text += `视频名称: ${video.original_name}\n`;
+      text += `文件大小: ${formatFileSize(video.file_size)}\n`;
+      text += `视频时长: ${formatDuration(video.duration)}\n`;
+      text += `章节数量: ${chapters.length}\n`;
+      text += `生成时间: ${new Date().toLocaleString('zh-CN')}\n`;
+      text += `\n${'='.repeat(60)}\n\n`;
+
+      chapters.forEach((ch, idx) => {
+        text += `【第 ${ch.chapter_index} 章】\n`;
+        text += `时间范围: ${formatDuration(ch.start_time)} → ${formatDuration(ch.end_time)}\n`;
+        text += `章节标题: ${ch.title}\n`;
+        if (ch.description) {
+          text += `章节描述: ${ch.description}\n`;
+        }
+        if (idx < chapters.length - 1) {
+          text += `\n${'-'.repeat(60)}\n\n`;
+        }
+      });
+
+      text += `\n${'='.repeat(60)}\n`;
+      text += `由视频章节生成器自动生成\n`;
+
+      // Create blob and download
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename
+      const filename = `${video.original_name.replace(/\.[^/.]+$/, '')}_章节列表_${Date.now()}.txt`;
+      link.download = filename;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast('✅ 章节列表已导出为 TXT 文件！', 'success');
+    }
+  } catch (error) {
+    console.error('Export TXT error:', error);
+    showToast('导出失败: ' + error.message, 'error');
   }
 }
 

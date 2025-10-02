@@ -1,0 +1,13 @@
+node_modules/
+.env
+uploads/
+temp/
+*.log
+.DS_Store
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.flv
+*.wmv
+*.webm

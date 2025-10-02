@@ -1,39 +1,37 @@
-// services/gpt-chapter.js - Azure OpenAI GPT-4 integration for intelligent chapter generation
-const { OpenAIClient, AzureKeyCredential } = require('@azure/openai');
+// services/gpt-chapter.js - Ollama Local LLM integration for intelligent chapter generation
+const { Ollama } = require('ollama');
 require('dotenv').config();
 
 class GPTChapterService {
   constructor() {
-    this.apiKey = process.env.AZURE_OPENAI_KEY;
-    this.endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    this.deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'my-gpt4-turbo';
-    this.apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-02-01';
+    this.ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
+    this.modelName = process.env.OLLAMA_MODEL || 'yi:9b';
 
-    if (!this.apiKey || !this.endpoint) {
-      console.warn('⚠️ Azure OpenAI credentials not configured. Chapter generation will use fallback method.');
+    try {
+      this.client = new Ollama({ host: this.ollamaHost });
+      console.log(`✅ Ollama client initialized: ${this.ollamaHost}, model: ${this.modelName}`);
+    } catch (error) {
+      console.warn('⚠️ Ollama client initialization failed. Chapter generation will use fallback method.');
+      console.error(error);
+      this.client = null;
     }
-
-    this.client = this.apiKey && this.endpoint ? new OpenAIClient(
-      this.endpoint,
-      new AzureKeyCredential(this.apiKey)
-    ) : null;
   }
 
-  // Generate chapters from transcript using GPT-4
+  // Generate chapters from transcript using Ollama
   async generateChapters(transcript, videoDuration) {
     if (!this.client) {
-      console.log('⚠️ Using fallback chapter generation (no Azure OpenAI configured)');
+      console.log('⚠️ Using fallback chapter generation (no Ollama configured)');
       return this.fallbackChapterGeneration(transcript, videoDuration);
     }
 
     try {
       const prompt = this.buildChapterPrompt(transcript, videoDuration);
       
-      console.log('🤖 Requesting GPT-4 to generate chapters...');
+      console.log(`🤖 Requesting Ollama (${this.modelName}) to generate chapters...`);
 
-      const response = await this.client.getChatCompletions(
-        this.deployment,
-        [
+      const response = await this.client.chat({
+        model: this.modelName,
+        messages: [
           {
             role: 'system',
             content: 'You are an expert video content analyzer. Your task is to analyze video transcripts and generate meaningful chapter divisions with titles and descriptions. You must respond in valid JSON format.'
@@ -43,14 +41,15 @@ class GPTChapterService {
             content: prompt
           }
         ],
-        {
+        options: {
           temperature: 0.7,
-          maxTokens: 4000
-        }
-      );
+          num_predict: 4000
+        },
+        stream: false
+      });
 
-      const content = response.choices[0].message.content;
-      console.log('✅ GPT-4 response received');
+      const content = response.message.content;
+      console.log('✅ Ollama response received');
 
       // Parse JSON response
       const chapters = this.parseGPTResponse(content);
@@ -58,13 +57,13 @@ class GPTChapterService {
       return chapters;
 
     } catch (error) {
-      console.error('❌ GPT-4 chapter generation error:', error);
+      console.error('❌ Ollama chapter generation error:', error);
       console.log('⚠️ Falling back to automatic chapter generation');
       return this.fallbackChapterGeneration(transcript, videoDuration);
     }
   }
 
-  // Build prompt for GPT-4
+  // Build prompt for Ollama
   buildChapterPrompt(transcript, videoDuration) {
     const { fullText, segments } = transcript;
     
@@ -105,7 +104,7 @@ ${segments.slice(0, 50).map(s => `[${this.formatTime(s.startTime)} - ${this.form
 - 最后一个章节的 endTime 应该接近视频总时长 ${videoDuration} 秒`;
   }
 
-  // Parse GPT-4 JSON response
+  // Parse LLM JSON response
   parseGPTResponse(content) {
     try {
       // Extract JSON from markdown code blocks if present
@@ -131,12 +130,12 @@ ${segments.slice(0, 50).map(s => `[${this.formatTime(s.startTime)} - ${this.form
       }));
 
     } catch (error) {
-      console.error('❌ Failed to parse GPT response:', error);
-      throw new Error(`Invalid GPT response format: ${error.message}`);
+      console.error('❌ Failed to parse LLM response:', error);
+      throw new Error(`Invalid LLM response format: ${error.message}`);
     }
   }
 
-  // Fallback chapter generation (when GPT is not available)
+  // Fallback chapter generation (when LLM is not available)
   fallbackChapterGeneration(transcript, videoDuration) {
     const { segments } = transcript;
     const chapters = [];

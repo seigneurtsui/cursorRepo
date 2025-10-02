@@ -1,6 +1,6 @@
 # 🎬 视频章节生成器 (Video Chapter Generator)
 
-一个基于 **Node.js + PostgreSQL + 纯HTML/CSS/JS** 的全栈应用，使用 **Whisper AI** 和 **GPT-4 Turbo** 自动为视频生成智能时间轴（章节标记）。
+一个基于 **Node.js + PostgreSQL + 纯HTML/CSS/JS** 的全栈应用，使用 **Whisper AI** 和 **Ollama 本地大模型 (yi:9b)** 自动为视频生成智能时间轴（章节标记）。
 
 ## ✨ 核心功能
 
@@ -15,7 +15,7 @@
 ### 🤖 AI 处理流程
 1. **音频提取**：使用 FFmpeg 从视频中提取音频
 2. **语音转文字**：使用 Whisper API 将音频转录为文字
-3. **智能分章**：使用 Azure OpenAI GPT-4 Turbo 智能分析内容生成章节
+3. **智能分章**：使用 Ollama 本地大模型 (yi:9b) 智能分析内容生成章节
 4. **数据存储**：章节数据存入 PostgreSQL 数据库
 5. **多渠道通知**：通过 4 个渠道发送处理完成通知
 
@@ -32,7 +32,7 @@
 - **Node.js + Express**：Web 服务器
 - **PostgreSQL**：关系型数据库
 - **Whisper AI**：语音识别（本地化部署）
-- **Azure OpenAI GPT-4 Turbo**：智能内容分析
+- **Ollama + yi:9b**：本地大语言模型，智能内容分析
 - **FFmpeg**：音视频处理
 - **WebSocket**：实时通信
 
@@ -53,8 +53,30 @@
 - PostgreSQL >= 12.x
 - FFmpeg
 - Whisper 模型文件
+- Ollama (本地大模型运行时)
 
-### 2. 安装依赖
+### 2. 安装 Ollama 和模型
+
+**安装 Ollama**:
+```bash
+# macOS / Linux
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Windows: 访问 https://ollama.com/download 下载安装
+```
+
+**下载 yi:9b 模型**:
+```bash
+ollama pull yi:9b
+```
+
+**启动 Ollama 服务**:
+```bash
+ollama serve
+# 服务会在 http://localhost:11434 运行
+```
+
+### 3. 安装项目依赖
 
 ```bash
 # 克隆项目（如果适用）
@@ -65,7 +87,7 @@ cd video-chapter-generator
 npm install
 ```
 
-### 3. 配置环境变量
+### 4. 配置环境变量
 
 复制 `.env.example` 为 `.env` 并配置：
 
@@ -90,11 +112,9 @@ PORT=3000
 WHISPER_MODEL_PATH=/path/to/whisper/models/ggml-large-v3-turbo.bin
 WHISPER_EXECUTABLE_PATH=/path/to/whisper/main
 
-# Azure OpenAI 配置
-AZURE_OPENAI_KEY=your_azure_key
-AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT=my-gpt4-turbo
-AZURE_OPENAI_API_VERSION=2024-02-01
+# Ollama 配置（本地大模型）
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=yi:9b
 
 # 通知系统配置（可选）
 WXPUSHER_TOKEN=your_token
@@ -106,13 +126,13 @@ TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 ```
 
-### 4. 初始化数据库
+### 5. 初始化数据库
 
 ```bash
 npm run init-db
 ```
 
-### 5. 启动服务
+### 6. 启动服务
 
 ```bash
 # 生产环境
@@ -373,10 +393,11 @@ CREATE TABLE chapters (
 - 验证 FFmpeg 是否安装
 - 确保有足够的磁盘空间
 
-### GPT-4 章节生成失败
-- 验证 Azure OpenAI 配置
-- 检查 API 密钥是否有效
-- 查看是否有 API 配额限制
+### 智能章节生成失败
+- 确保 Ollama 服务正在运行：`ollama serve`
+- 验证模型已安装：`ollama list`
+- 如果未安装 yi:9b 模型：`ollama pull yi:9b`
+- 检查 Ollama 服务地址配置是否正确
 
 ### 通知发送失败
 - 检查通知服务的 token 配置

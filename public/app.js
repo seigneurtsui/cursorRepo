@@ -851,7 +851,13 @@ async function exportCustomExcel(videoId) {
 // Export data
 async function exportData(format) {
   try {
-    showToast(`正在导出 ${format.toUpperCase()} 格式...`, 'info');
+    // Check if any videos are selected
+    if (selectedVideoIds.size === 0) {
+      showToast('请先选择要导出的视频', 'warning');
+      return;
+    }
+
+    showToast(`正在导出 ${selectedVideoIds.size} 个视频的 ${format.toUpperCase()} 格式...`, 'info');
 
     const response = await fetch(`${API_BASE}/api/export`, {
       method: 'POST',
@@ -860,7 +866,7 @@ async function exportData(format) {
       },
       body: JSON.stringify({
         format,
-        filters: currentFilters
+        videoIds: Array.from(selectedVideoIds)  // Send selected video IDs
       })
     });
 
@@ -1007,35 +1013,40 @@ async function batchDownloadTranscripts() {
   showToast(`✅ 已下载 ${selectedVideoIds.size} 个字幕文件！`, 'success');
 }
 
-// Batch export custom Excel
+// Batch export custom Excel (merged into one file)
 async function batchExportCustomExcel() {
   if (selectedVideoIds.size === 0) {
     showToast('请先选择要导出的视频', 'warning');
     return;
   }
 
-  showToast(`正在导出 ${selectedVideoIds.size} 个定制 EXCEL...`, 'info');
+  showToast(`正在合并导出 ${selectedVideoIds.size} 个视频到定制 EXCEL...`, 'info');
 
-  for (const videoId of selectedVideoIds) {
-    try {
-      const response = await fetch(`${API_BASE}/api/export-custom-excel/${videoId}`);
-      const blob = await response.blob();
-      
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `custom_export_${videoId}_${Date.now()}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      // Small delay between downloads
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (error) {
-      console.error(`Export custom Excel error for video ${videoId}:`, error);
-    }
+  try {
+    const response = await fetch(`${API_BASE}/api/batch-export-custom-excel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        videoIds: Array.from(selectedVideoIds)
+      })
+    });
+
+    const blob = await response.blob();
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `custom_export_batch_${Date.now()}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast(`✅ 已合并导出 ${selectedVideoIds.size} 个视频到一个 EXCEL 文件！`, 'success');
+  } catch (error) {
+    console.error('Batch export custom Excel error:', error);
+    showToast('批量导出失败: ' + error.message, 'error');
   }
-
-  showToast(`✅ 已导出 ${selectedVideoIds.size} 个定制 EXCEL 文件！`, 'success');
 }

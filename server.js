@@ -516,15 +516,24 @@ app.delete('/api/videos/:id', async (req, res) => {
 // Export data
 app.post('/api/export', async (req, res) => {
   try {
-    const { format, filters = {} } = req.body;
+    const { format, videoIds } = req.body;
 
     if (!['excel', 'csv', 'html', 'pdf', 'markdown'].includes(format)) {
       return res.status(400).json({ error: '不支持的导出格式' });
     }
 
-    // Get filtered data
-    const videos = await db.videos.findAll(filters);
-    const videoIds = videos.map(v => v.id);
+    if (!videoIds || videoIds.length === 0) {
+      return res.status(400).json({ error: '请选择要导出的视频' });
+    }
+
+    // Get selected videos data
+    const videos = [];
+    for (const videoId of videoIds) {
+      const video = await db.videos.findById(videoId);
+      if (video) {
+        videos.push(video);
+      }
+    }
     
     let allChapters = [];
     for (const videoId of videoIds) {
@@ -657,6 +666,81 @@ app.get('/api/export-custom-excel/:id', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Export custom Excel error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Batch export custom Excel (merged into one file)
+app.post('/api/batch-export-custom-excel', async (req, res) => {
+  try {
+    const { videoIds } = req.body;
+    
+    if (!videoIds || videoIds.length === 0) {
+      return res.status(400).json({ error: '请选择要导出的视频' });
+    }
+
+    // Generate custom Excel with all videos
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('批量视频数据');
+
+    // Set columns
+    sheet.columns = [
+      { header: 'title', key: 'title', width: 50 },
+      { header: 'description', key: 'description', width: 80 },
+      { header: 'filename', key: 'filename', width: 60 }
+    ];
+
+    // Style header
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, size: 12 };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    // Process each video
+    for (const videoId of videoIds) {
+      const video = await db.videos.findById(videoId);
+      if (!video) continue;
+
+      const chapters = await db.chapters.findByVideoId(videoId);
+
+      // Generate video title
+      const videoTitle = video.original_name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+      
+      // Format chapters list
+      let description = '';
+      if (chapters && chapters.length > 0) {
+        chapters.sort((a, b) => a.chapter_index - b.chapter_index);
+        chapters.forEach((ch) => {
+          const startTime = exportService.formatTime(ch.start_time);
+          const endTime = exportService.formatTime(ch.end_time);
+          description += `${ch.chapter_index}. [${startTime} - ${endTime}] ${ch.title}\n`;
+          if (ch.description) {
+            description += `   ${ch.description}\n`;
+          }
+          description += '\n';
+        });
+      }
+
+      // Generate filename with absolute path
+      const filename = '/Users/seigneur/lavoro/video-chapters/' + video.file_path;
+
+      // Add data row
+      sheet.addRow({
+        title: videoTitle,
+        description: description.trim(),
+        filename: filename
+      });
+    }
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=custom_export_batch_${Date.now()}.xlsx`);
+    
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('❌ Batch export custom Excel error:', error);
     res.status(500).json({ error: error.message });
   }
 });

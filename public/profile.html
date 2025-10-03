@@ -20,8 +20,25 @@
     .payment-btn { padding: 12px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; transition: all 0.3s; text-align: center; }
     .payment-btn:hover { border-color: #28a745; }
     .payment-btn.selected { border-color: #28a745; background: #f0fff0; }
-    .btn-primary { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-    .btn-primary:hover { background: #0056b3; }
+    .btn-primary { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+    .btn-primary:hover { background: #0056b3; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3); }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .success-icon { color: #28a745; margin-right: 5px; }
+    .info-icon { color: #17a2b8; margin-right: 5px; }
     .info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
     .nav-buttons { text-align: right; margin-bottom: 15px; }
     .nav-buttons button { margin-left: 10px; padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; }
@@ -37,13 +54,21 @@
     <div class="profile-header">
       <h2>👤 会员中心</h2>
       <div id="userInfo">
-        <div style="font-size: 20px; margin-bottom: 10px;">欢迎，<span id="username">加载中...</span></div>
-        <div style="font-size: 14px; opacity: 0.9;">账号：<span id="email">加载中...</span></div>
+        <div style="font-size: 24px; margin-bottom: 10px; font-weight: 600;">欢迎回来，<span id="username">加载中...</span> 👋</div>
+        <div style="font-size: 14px; opacity: 0.9; display: flex; align-items: center; gap: 10px;">
+          <span>📧</span>
+          <span id="email">加载中...</span>
+        </div>
       </div>
-      <div class="balance-display">
-        ¥ <span id="balance">0.00</span>
+      <div style="margin: 20px 0; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 12px; backdrop-filter: blur(10px);">
+        <div style="font-size: 16px; opacity: 0.9; margin-bottom: 5px;">💰 账户余额</div>
+        <div class="balance-display">
+          ¥ <span id="balance">0.00</span>
+        </div>
+        <div style="font-size: 13px; opacity: 0.8; margin-top: 8px;">
+          <span id="balanceStatus">余额充足 ✓</span>
+        </div>
       </div>
-      <div style="font-size: 14px; opacity: 0.9;">当前余额</div>
     </div>
 
     <!-- 充值套餐 -->
@@ -154,7 +179,26 @@
           currentUser = result.user;
           document.getElementById('username').textContent = currentUser.username;
           document.getElementById('email').textContent = currentUser.email;
-          document.getElementById('balance').textContent = currentUser.balance.toFixed(2);
+          
+          // Update balance display with animation
+          const balanceElement = document.getElementById('balance');
+          const balanceStatus = document.getElementById('balanceStatus');
+          if (balanceElement) {
+            const balance = currentUser.balance;
+            balanceElement.textContent = balance.toFixed(2);
+            
+            // Update balance status
+            if (balance < 5) {
+              balanceStatus.textContent = '余额不足，请充值 ⚠️';
+              balanceStatus.style.color = '#ffc107';
+            } else if (balance < 20) {
+              balanceStatus.textContent = '余额偏低，建议充值';
+              balanceStatus.style.color = '#f0f0f0';
+            } else {
+              balanceStatus.textContent = '余额充足 ✓';
+              balanceStatus.style.color = '#90ee90';
+            }
+          }
           
           loadTransactions();
         } else {
@@ -217,15 +261,19 @@
 
     async function recharge() {
       if (!selectedPlanId) {
-        alert('请选择充值套餐');
+        alert('❌ 请选择充值套餐');
         return;
       }
       if (!selectedPaymentMethod) {
-        alert('请选择支付方式');
+        alert('❌ 请选择支付方式');
         return;
       }
 
       const token = localStorage.getItem('token');
+      const rechargeBtn = event.target;
+      rechargeBtn.disabled = true;
+      rechargeBtn.innerHTML = '<span class="loading-spinner"></span>充值中...';
+      
       try {
         const response = await fetch(`${API_BASE}/api/auth/recharge`, {
           method: 'POST',
@@ -242,14 +290,31 @@
         const result = await response.json();
         
         if (result.success) {
-          alert(`充值成功！\n新余额: ¥${result.newBalance.toFixed(2)}`);
-          loadProfile();
+          // Success animation
+          rechargeBtn.innerHTML = '✅ 充值成功！';
+          rechargeBtn.style.background = '#28a745';
+          
+          setTimeout(() => {
+            alert(`🎉 充值成功！\n\n新余额: ¥${result.newBalance.toFixed(2)}\n\n感谢您的支持！`);
+            loadProfile();
+            
+            // Reset button
+            setTimeout(() => {
+              rechargeBtn.disabled = false;
+              rechargeBtn.innerHTML = '💰 立即充值（演示版-自动到账）';
+              rechargeBtn.style.background = '';
+            }, 1000);
+          }, 500);
         } else {
-          alert('充值失败: ' + result.error);
+          alert('❌ 充值失败: ' + result.error);
+          rechargeBtn.disabled = false;
+          rechargeBtn.innerHTML = '💰 立即充值（演示版-自动到账）';
         }
       } catch (error) {
         console.error('充值错误:', error);
-        alert('充值失败，请稍后重试');
+        alert('❌ 充值失败，请稍后重试');
+        rechargeBtn.disabled = false;
+        rechargeBtn.innerHTML = '💰 立即充值（演示版-自动到账）';
       }
     }
 

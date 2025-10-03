@@ -116,13 +116,77 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       z-index: 10000;
       animation: slideIn 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 250px;
     }
     .toast.error { background: #dc3545; }
     .toast.warning { background: #ffc107; color: #333; }
+    .toast.info { background: #17a2b8; }
+    .toast::before {
+      content: '';
+      font-size: 20px;
+    }
+    .toast.error::before { content: '❌'; }
+    .toast.warning::before { content: '⚠️'; }
+    .toast.info::before { content: 'ℹ️'; }
     @keyframes slideIn {
       from { transform: translateX(400px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(400px); opacity: 0; }
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .btn-submit:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .btn-send-code:hover:not(:disabled) {
+      background: #218838;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+    #captchaContainer:hover {
+      border-color: #0056b3;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      transform: translateY(-2px);
+    }
+    .password-strength {
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      margin-top: 5px;
+      overflow: hidden;
+    }
+    .password-strength-bar {
+      height: 100%;
+      transition: all 0.3s;
+      border-radius: 2px;
+    }
+    .strength-weak { width: 33%; background: #dc3545; }
+    .strength-medium { width: 66%; background: #ffc107; }
+    .strength-strong { width: 100%; background: #28a745; }
   </style>
 </head>
 <body>
@@ -140,12 +204,18 @@
       <div class="form-group">
         <label for="captcha">图形验证码 <span class="required">*</span></label>
         <div style="display: flex; gap: 10px; align-items: center;">
-          <input type="text" id="captcha" name="captcha" placeholder="请输入图形验证码" required style="flex: 1;">
-          <div id="captchaContainer" style="cursor: pointer; border: 1px solid #ddd; border-radius: 6px; padding: 5px; background: #f8f9fa;" onclick="refreshCaptcha()" title="点击刷新">
-            <div style="text-align: center; color: #999; font-size: 12px;">加载中...</div>
+          <input type="text" id="captcha" name="captcha" placeholder="请输入图形验证码" required style="flex: 1; text-transform: uppercase;" maxlength="4" autocomplete="off">
+          <div id="captchaContainer" style="cursor: pointer; border: 2px solid #007bff; border-radius: 8px; padding: 8px; background: #fff; transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.1);" onclick="refreshCaptcha()" title="点击刷新验证码">
+            <div style="text-align: center; color: #999; font-size: 12px;">
+              <div class="loading-spinner"></div>
+              加载中...
+            </div>
           </div>
         </div>
-        <div style="color: #999; font-size: 12px; margin-top: 5px;">点击图片可刷新验证码</div>
+        <div style="color: #666; font-size: 12px; margin-top: 5px; display: flex; align-items: center; gap: 5px;">
+          <span>💡</span>
+          <span>不区分大小写，点击图片可刷新</span>
+        </div>
       </div>
       
       <div class="form-group">
@@ -165,7 +235,11 @@
       
       <div class="form-group">
         <label for="password">密码 <span class="required">*</span></label>
-        <input type="password" id="password" name="password" placeholder="请输入密码（至少8位）" required minlength="8">
+        <input type="password" id="password" name="password" placeholder="请输入密码（至少8位）" required minlength="8" oninput="checkPasswordStrength()">
+        <div class="password-strength">
+          <div id="passwordStrengthBar" class="password-strength-bar"></div>
+        </div>
+        <div id="passwordStrengthText" style="font-size: 12px; margin-top: 5px; color: #666;"></div>
       </div>
       
       <!-- 可选字段 -->
@@ -238,8 +312,47 @@
       document.body.appendChild(toast);
       
       setTimeout(() => {
-        toast.remove();
+        toast.style.animation = 'slideOut 0.3s';
+        setTimeout(() => toast.remove(), 300);
       }, 3000);
+    }
+
+    // Check password strength
+    function checkPasswordStrength() {
+      const password = document.getElementById('password').value;
+      const strengthBar = document.getElementById('passwordStrengthBar');
+      const strengthText = document.getElementById('passwordStrengthText');
+      
+      if (password.length === 0) {
+        strengthBar.className = 'password-strength-bar';
+        strengthText.textContent = '';
+        return;
+      }
+      
+      let strength = 0;
+      
+      // Length check
+      if (password.length >= 8) strength++;
+      if (password.length >= 12) strength++;
+      
+      // Complexity check
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+      if (/[0-9]/.test(password)) strength++;
+      if (/[^a-zA-Z0-9]/.test(password)) strength++;
+      
+      if (strength <= 2) {
+        strengthBar.className = 'password-strength-bar strength-weak';
+        strengthText.textContent = '密码强度：弱';
+        strengthText.style.color = '#dc3545';
+      } else if (strength <= 4) {
+        strengthBar.className = 'password-strength-bar strength-medium';
+        strengthText.textContent = '密码强度：中';
+        strengthText.style.color = '#ffc107';
+      } else {
+        strengthBar.className = 'password-strength-bar strength-strong';
+        strengthText.textContent = '密码强度：强 ✓';
+        strengthText.style.color = '#28a745';
+      }
     }
 
     async function sendVerificationCode() {
@@ -250,8 +363,16 @@
         return;
       }
       
+      // Email format validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showToast('请输入有效的邮箱地址', 'error');
+        return;
+      }
+      
       const btn = document.getElementById('sendCodeBtn');
       btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> 发送中...';
       
       try {
         const response = await fetch(`${API_BASE}/api/auth/send-code`, {
@@ -263,7 +384,7 @@
         const result = await response.json();
         
         if (result.success) {
-          showToast('验证码已发送到您的邮箱，请查收', 'success');
+          showToast('✅ 验证码已发送，请查收邮箱', 'success');
           
           // Start countdown
           countdown = 60;

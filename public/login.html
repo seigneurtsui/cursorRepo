@@ -84,12 +84,41 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       z-index: 10000;
       animation: slideIn 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 250px;
     }
     .toast.error { background: #dc3545; }
     .toast.warning { background: #ffc107; color: #333; }
+    .toast::before {
+      content: '✅';
+      font-size: 20px;
+    }
+    .toast.error::before { content: '❌'; }
+    .toast.warning::before { content: '⚠️'; }
     @keyframes slideIn {
       from { transform: translateX(400px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
+    }
+    .btn-submit:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -137,6 +166,11 @@
       
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      
+      // Disable button and show loading
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>登录中...';
       
       try {
         const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -148,7 +182,7 @@
         const result = await response.json();
         
         if (result.success) {
-          showToast('登录成功！', 'success');
+          showToast('登录成功！正在跳转...', 'success');
           localStorage.setItem('token', result.token);
           localStorage.setItem('user', JSON.stringify(result.user));
           
@@ -162,10 +196,14 @@
           }, 1000);
         } else {
           showToast(result.error || '登录失败', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = '登录';
         }
       } catch (error) {
         console.error('登录错误:', error);
         showToast('登录失败，请稍后重试', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '登录';
       }
     });
   </script>

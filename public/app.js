@@ -46,6 +46,16 @@ async function checkAuth() {
       
       // Store user info
       localStorage.setItem('user', JSON.stringify(result.user));
+      
+      // If admin, show admin-only features
+      if (result.user.is_admin) {
+        const adminFilterContainer = document.getElementById('adminUserFilterContainer');
+        if (adminFilterContainer) {
+          adminFilterContainer.style.display = 'inline-flex';
+          adminFilterContainer.style.alignItems = 'center';
+          await loadAdminUserFilter();
+        }
+      }
     } else {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -54,6 +64,37 @@ async function checkAuth() {
   } catch (error) {
     console.error('认证检查失败:', error);
     window.location.href = '/public/login.html';
+  }
+}
+
+// Load admin user filter dropdown
+async function loadAdminUserFilter() {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/auth/admin/users?limit=1000`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      const filterSelect = document.getElementById('adminUserFilter');
+      if (filterSelect) {
+        const optionsHTML = result.users
+          .filter(u => !u.is_admin) // Exclude admins from filter
+          .map(user => 
+            `<option value="${user.id}">${user.username} (${user.email})</option>`
+          ).join('');
+        filterSelect.innerHTML = '<option value="">全部会员</option>' + optionsHTML;
+        
+        // Add change event listener
+        filterSelect.addEventListener('change', function() {
+          applyFilters();
+        });
+      }
+    }
+  } catch (error) {
+    console.error('加载会员列表失败:', error);
   }
 }
 
@@ -549,9 +590,9 @@ function applyFilters() {
   const startDate = document.getElementById('filterStartDate').value;
   const endDate = document.getElementById('filterEndDate').value;
   
-  // Admin: user filter
-  const userFilter = document.getElementById('userFilter');
-  const userId = userFilter ? userFilter.value : '';
+  // Admin: user filter (from video list section)
+  const adminUserFilter = document.getElementById('adminUserFilter');
+  const userId = adminUserFilter ? adminUserFilter.value : '';
 
   currentFilters = {
     ...(keyword && { keyword }),
@@ -573,9 +614,9 @@ function resetFilters() {
   document.getElementById('filterEndDate').value = '';
   
   // Admin: reset user filter
-  const userFilter = document.getElementById('userFilter');
-  if (userFilter) {
-    userFilter.value = '';
+  const adminUserFilter = document.getElementById('adminUserFilter');
+  if (adminUserFilter) {
+    adminUserFilter.value = '';
   }
   
   currentFilters = {};
@@ -583,9 +624,9 @@ function resetFilters() {
   loadVideos();
 }
 
-// Export all users' videos to Excel (admin only)
-async function exportAllVideos() {
-  if (!confirm('确定要导出全部会员的所有视频信息吗？')) return;
+// Export all users' videos to Excel (admin only) - from admin user filter button
+async function exportAllUsersVideos() {
+  if (!confirm('确定要导出全部会员的所有视频信息吗？\n\n导出的Excel文件将包含：\n• 所有会员的视频信息\n• 上传者用户名和邮箱\n• 视频详情和章节列表')) return;
 
   try {
     showToast('正在生成Excel文件...', 'info');
@@ -622,7 +663,7 @@ async function exportAllVideos() {
         link.download = `all_users_videos_${Date.now()}.xlsx`;
         link.click();
         URL.revokeObjectURL(url);
-        showToast('✅ 导出成功！', 'success');
+        showToast('✅ 导出成功！包含' + result.data.length + '个视频', 'success');
       } else {
         throw new Error('导出失败');
       }

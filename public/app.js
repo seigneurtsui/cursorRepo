@@ -695,16 +695,20 @@ async function exportAllUsersVideos() {
       throw new Error(errorData.error || '导出失败');
     }
     
-    // Download the file
-    const blob = await exportResponse.blob();
-    const url = URL.createObjectURL(blob);
+    // Get download URL from response
+    const exportResult = await exportResponse.json();
+    
+    if (!exportResult.success || !exportResult.downloadUrl) {
+      throw new Error('导出失败：未获取到下载链接');
+    }
+    
+    // Download the file using the provided URL
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `videos_export_${Date.now()}.xlsx`;
+    link.href = `${API_BASE}${exportResult.downloadUrl}`;
+    link.download = exportResult.filename || `videos_export_${Date.now()}.xlsx`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
     
     showToast(`✅ 成功导出${videoCount}个视频！`, 'success');
     
@@ -1581,5 +1585,82 @@ async function exportMemberVideos(userId, username) {
   } catch (error) {
     console.error('Export member videos error:', error);
     showToast('导出失败: ' + error.message, 'error');
+  }
+}
+
+// Export members balance to Excel (admin only)
+async function exportMembersBalanceExcel() {
+  try {
+    const token = localStorage.getItem('token');
+    
+    // Show loading
+    showToast('正在获取会员数据...', 'info');
+    
+    // Get all users data
+    const response = await fetch(`${API_BASE}/api/auth/admin/users?limit=1000`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (!response.ok) {
+      throw new Error('获取会员数据失败');
+    }
+    
+    const result = await response.json();
+    
+    if (!result.success || !result.users || result.users.length === 0) {
+      showToast('⚠️ 没有可导出的会员数据', 'warning');
+      return;
+    }
+    
+    const userCount = result.users.length;
+    
+    if (!confirm(`确定要导出${userCount}个会员的账户信息和余额吗？\n\n导出的Excel文件将包含：\n• 用户ID\n• 用户名\n• 邮箱\n• 账户余额\n• 账户状态\n• 注册时间`)) {
+      return;
+    }
+    
+    showToast(`正在导出${userCount}个会员...`, 'info');
+    
+    // Create Excel file using ExcelJS (client-side)
+    // We'll use a simple HTML table approach and convert to Excel
+    
+    // Prepare data for export
+    const users = result.users;
+    
+    // Create CSV content (Excel can open CSV files)
+    let csvContent = '\uFEFF'; // UTF-8 BOM for Excel
+    csvContent += 'ID,用户名,邮箱,账户余额,会员等级,账户状态,手机号,微信,注册时间,最后登录\n';
+    
+    users.forEach(user => {
+      const row = [
+        user.id,
+        `"${user.username || ''}"`,
+        `"${user.email || ''}"`,
+        parseFloat(user.balance || 0).toFixed(2),
+        user.membership_level || 1,
+        user.is_active ? '已激活' : '已禁用',
+        `"${user.phone || ''}"`,
+        `"${user.wechat || ''}"`,
+        user.created_at ? new Date(user.created_at).toLocaleString('zh-CN') : '',
+        user.last_login_at ? new Date(user.last_login_at).toLocaleString('zh-CN') : '从未登录'
+      ];
+      csvContent += row.join(',') + '\n';
+    });
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `members_balance_${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast(`✅ 成功导出${userCount}个会员！`, 'success');
+    
+  } catch (error) {
+    console.error('Export members balance error:', error);
+    showToast('❌ 导出失败: ' + error.message, 'error');
   }
 }

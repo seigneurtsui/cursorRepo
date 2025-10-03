@@ -186,61 +186,88 @@ async function processVideoFile(videoId) {
 
     // Stage 4: Validate and adjust chapter times
     console.log(`🔍 Validating chapter times against video duration: ${duration}s`);
+    console.log(`📊 Original chapters data:`, chaptersData.map(ch => ({
+      index: ch.chapterIndex,
+      start: ch.startTime,
+      end: ch.endTime,
+      title: ch.title
+    })));
+    
     const validatedChapters = [];
     
-    // First pass: validate basic time constraints
-    for (let idx = 0; idx < chaptersData.length; idx++) {
-      const ch = chaptersData[idx];
-      let startTime = Math.max(0, Math.min(ch.startTime, duration));
-      let endTime = ch.endTime;
-      
-      // For the last chapter, ensure it ends at video duration
-      if (idx === chaptersData.length - 1) {
-        endTime = duration;
-      } else {
-        // For other chapters, cap at video duration
-        endTime = Math.min(ch.endTime, duration);
-      }
-      
-      // Ensure endTime is after startTime
-      if (endTime <= startTime) {
-        // If endTime is invalid, estimate based on remaining time
-        const remainingChapters = chaptersData.length - idx;
-        const remainingTime = duration - startTime;
-        endTime = Math.min(startTime + (remainingTime / remainingChapters), duration);
-      }
-      
-      validatedChapters.push({
-        chapterIndex: ch.chapterIndex,
-        startTime,
-        endTime,
-        title: ch.title,
-        description: ch.description || '',
-        keyPoints: ch.keyPoints || []
-      });
-    }
+    // Check if we need to redistribute chapters evenly
+    const needsRedistribution = chaptersData.some(ch => 
+      ch.startTime >= duration || ch.endTime > duration || ch.endTime <= ch.startTime
+    );
     
-    // Second pass: ensure no overlaps and fix any remaining issues
-    for (let idx = 1; idx < validatedChapters.length; idx++) {
-      const current = validatedChapters[idx];
-      const previous = validatedChapters[idx - 1];
+    if (needsRedistribution) {
+      console.log(`⚠️ Chapter times need redistribution - using equal distribution`);
+      // Distribute chapters evenly across video duration
+      const chapterDuration = duration / chaptersData.length;
       
-      // If current chapter starts before previous ends, adjust
-      if (current.startTime < previous.endTime) {
-        current.startTime = previous.endTime;
+      for (let idx = 0; idx < chaptersData.length; idx++) {
+        const ch = chaptersData[idx];
+        const startTime = idx * chapterDuration;
+        const endTime = (idx + 1) * chapterDuration;
         
-        // Recalculate endTime if needed
+        validatedChapters.push({
+          chapterIndex: ch.chapterIndex,
+          startTime: Math.round(startTime * 100) / 100,  // Round to 2 decimals
+          endTime: Math.round(endTime * 100) / 100,
+          title: ch.title,
+          description: ch.description || '',
+          keyPoints: ch.keyPoints || []
+        });
+      }
+    } else {
+      // Use original times with minor adjustments
+      for (let idx = 0; idx < chaptersData.length; idx++) {
+        const ch = chaptersData[idx];
+        let startTime = Math.max(0, Math.min(ch.startTime, duration));
+        let endTime = Math.min(ch.endTime, duration);
+        
+        // Ensure endTime is after startTime
+        if (endTime <= startTime) {
+          const avgDuration = duration / chaptersData.length;
+          endTime = Math.min(startTime + avgDuration, duration);
+        }
+        
+        validatedChapters.push({
+          chapterIndex: ch.chapterIndex,
+          startTime: Math.round(startTime * 100) / 100,
+          endTime: Math.round(endTime * 100) / 100,
+          title: ch.title,
+          description: ch.description || '',
+          keyPoints: ch.keyPoints || []
+        });
+      }
+      
+      // Ensure no overlaps
+      for (let idx = 1; idx < validatedChapters.length; idx++) {
+        const current = validatedChapters[idx];
+        const previous = validatedChapters[idx - 1];
+        
+        if (current.startTime < previous.endTime) {
+          current.startTime = previous.endTime;
+        }
         if (current.endTime <= current.startTime) {
-          if (idx === validatedChapters.length - 1) {
-            current.endTime = duration;
-          } else {
-            const remainingChapters = validatedChapters.length - idx;
-            const remainingTime = duration - current.startTime;
-            current.endTime = Math.min(current.startTime + (remainingTime / remainingChapters), duration);
-          }
+          const avgDuration = duration / chaptersData.length;
+          current.endTime = Math.min(current.startTime + avgDuration, duration);
         }
       }
     }
+    
+    // Final adjustment: ensure last chapter ends at video duration
+    if (validatedChapters.length > 0) {
+      validatedChapters[validatedChapters.length - 1].endTime = duration;
+    }
+    
+    console.log(`✅ Validated chapters:`, validatedChapters.map(ch => ({
+      index: ch.chapterIndex,
+      start: ch.startTime,
+      end: ch.endTime,
+      title: ch.title
+    })));
 
     // Stage 5: Save chapters to database
     broadcastProgress({

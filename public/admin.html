@@ -27,8 +27,70 @@
         <div>管理员：<span id="adminName">加载中...</span></div>
       </div>
       <div>
+        <button class="btn btn-secondary" onclick="showChangePasswordModal()">🔑 修改密码</button>
+        <button class="btn btn-success" onclick="showCreateUserModal()">➕ 创建新账户</button>
         <button class="btn btn-secondary" onclick="window.location.href='/'">返回主页</button>
         <button class="btn btn-secondary" onclick="logout()">退出登录</button>
+      </div>
+    </div>
+
+    <!-- 修改密码模态框 -->
+    <div id="changePasswordModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
+        <h3 style="margin-top: 0;">🔑 修改管理员密码</h3>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">当前密码:</label>
+          <input type="password" id="currentPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="请输入当前密码">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">新密码:</label>
+          <input type="password" id="newPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="至少8位字符">
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 5px;">确认新密码:</label>
+          <input type="password" id="confirmPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="再次输入新密码">
+        </div>
+        <div style="text-align: right;">
+          <button class="btn btn-secondary" onclick="closeChangePasswordModal()" style="margin-right: 10px;">取消</button>
+          <button class="btn btn-primary" onclick="submitChangePassword()">确认修改</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建新账户模态框 -->
+    <div id="createUserModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-top: 0;">➕ 创建新用户账户</h3>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">邮箱地址 <span style="color: red;">*</span>:</label>
+          <input type="email" id="newUserEmail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="user@example.com" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">用户名 <span style="color: red;">*</span>:</label>
+          <input type="text" id="newUserUsername" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="用户名" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">初始密码 <span style="color: red;">*</span>:</label>
+          <input type="password" id="newUserPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="至少8位字符" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">初始余额 (元):</label>
+          <input type="number" id="newUserBalance" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="0" value="0" min="0" step="0.01">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">手机号:</label>
+          <input type="tel" id="newUserPhone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="选填">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">
+            <input type="checkbox" id="newUserIsAdmin" style="margin-right: 5px;">
+            设为管理员
+          </label>
+        </div>
+        <div style="text-align: right; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="closeCreateUserModal()" style="margin-right: 10px;">取消</button>
+          <button class="btn btn-success" onclick="submitCreateUser()">创建账户</button>
+        </div>
       </div>
     </div>
 
@@ -431,6 +493,151 @@
       } catch (error) {
         console.error('调整失败:', error);
         alert('❌ 调整失败');
+      }
+    }
+
+    // Show/hide change password modal
+    function showChangePasswordModal() {
+      document.getElementById('changePasswordModal').style.display = 'flex';
+    }
+
+    function closeChangePasswordModal() {
+      document.getElementById('changePasswordModal').style.display = 'none';
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+    }
+
+    // Submit change password
+    async function submitChangePassword() {
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        alert('请填写所有字段');
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        alert('新密码至少需要8位字符');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ 密码修改成功！请重新登录');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/public/login.html';
+        } else {
+          alert('❌ 密码修改失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('修改密码错误:', error);
+        alert('❌ 修改密码失败');
+      }
+    }
+
+    // Show/hide create user modal
+    function showCreateUserModal() {
+      document.getElementById('createUserModal').style.display = 'flex';
+    }
+
+    function closeCreateUserModal() {
+      document.getElementById('createUserModal').style.display = 'none';
+      document.getElementById('newUserEmail').value = '';
+      document.getElementById('newUserUsername').value = '';
+      document.getElementById('newUserPassword').value = '';
+      document.getElementById('newUserBalance').value = '0';
+      document.getElementById('newUserPhone').value = '';
+      document.getElementById('newUserIsAdmin').checked = false;
+    }
+
+    // Submit create user
+    async function submitCreateUser() {
+      const email = document.getElementById('newUserEmail').value.trim();
+      const username = document.getElementById('newUserUsername').value.trim();
+      const password = document.getElementById('newUserPassword').value;
+      const balance = parseFloat(document.getElementById('newUserBalance').value) || 0;
+      const phone = document.getElementById('newUserPhone').value.trim();
+      const isAdmin = document.getElementById('newUserIsAdmin').checked;
+
+      if (!email || !username || !password) {
+        alert('请填写必填字段（邮箱、用户名、密码）');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('邮箱格式不正确');
+        return;
+      }
+
+      if (password.length < 8) {
+        alert('密码至少需要8位字符');
+        return;
+      }
+
+      if (balance < 0) {
+        alert('初始余额不能为负数');
+        return;
+      }
+
+      if (!confirm(`确认创建新用户？\n\n邮箱: ${email}\n用户名: ${username}\n初始余额: ¥${balance.toFixed(2)}\n管理员: ${isAdmin ? '是' : '否'}`)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/admin/create-user`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email,
+            username,
+            password,
+            balance,
+            phone: phone || null,
+            isAdmin
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`✅ 用户创建成功！\n\n邮箱: ${email}\n用户名: ${username}\n初始余额: ¥${balance.toFixed(2)}`);
+          closeCreateUserModal();
+          loadAdminData(); // Reload user list
+        } else {
+          alert('❌ 创建用户失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('创建用户错误:', error);
+        alert('❌ 创建用户失败');
       }
     }
 

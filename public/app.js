@@ -49,11 +49,25 @@ async function checkAuth() {
       
       // If admin, show admin-only features
       if (result.user.is_admin) {
+        // Show admin user filter in video list header
         const adminFilterContainer = document.getElementById('adminUserFilterContainer');
         if (adminFilterContainer) {
           adminFilterContainer.style.display = 'inline-flex';
           adminFilterContainer.style.alignItems = 'center';
           await loadAdminUserFilter();
+        }
+        
+        // Show admin user filter in search section
+        const searchUserFilterGroup = document.getElementById('searchUserFilterGroup');
+        if (searchUserFilterGroup) {
+          searchUserFilterGroup.style.display = 'block';
+          await loadSearchUserFilter();
+        }
+        
+        // Show export all button in search section
+        const searchExportAllContainer = document.getElementById('searchExportAllContainer');
+        if (searchExportAllContainer) {
+          searchExportAllContainer.style.display = 'block';
         }
       }
     } else {
@@ -67,7 +81,7 @@ async function checkAuth() {
   }
 }
 
-// Load admin user filter dropdown
+// Load admin user filter dropdown (for video list header)
 async function loadAdminUserFilter() {
   try {
     const token = localStorage.getItem('token');
@@ -91,6 +105,32 @@ async function loadAdminUserFilter() {
         filterSelect.addEventListener('change', function() {
           applyFilters();
         });
+      }
+    }
+  } catch (error) {
+    console.error('加载会员列表失败:', error);
+  }
+}
+
+// Load search user filter dropdown (for search section)
+async function loadSearchUserFilter() {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/auth/admin/users?limit=1000`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      const filterSelect = document.getElementById('searchUserFilter');
+      if (filterSelect) {
+        const optionsHTML = result.users
+          .filter(u => !u.is_admin) // Exclude admins from filter
+          .map(user => 
+            `<option value="${user.id}">${user.username} (${user.email})</option>`
+          ).join('');
+        filterSelect.innerHTML = '<option value="">全部会员</option>' + optionsHTML;
       }
     }
   } catch (error) {
@@ -590,9 +630,10 @@ function applyFilters() {
   const startDate = document.getElementById('filterStartDate').value;
   const endDate = document.getElementById('filterEndDate').value;
   
-  // Admin: user filter (from video list section)
+  // Admin: user filter (check both locations)
   const adminUserFilter = document.getElementById('adminUserFilter');
-  const userId = adminUserFilter ? adminUserFilter.value : '';
+  const searchUserFilter = document.getElementById('searchUserFilter');
+  const userId = adminUserFilter ? adminUserFilter.value : (searchUserFilter ? searchUserFilter.value : '');
 
   currentFilters = {
     ...(keyword && { keyword }),
@@ -613,10 +654,15 @@ function resetFilters() {
   document.getElementById('filterStartDate').value = '';
   document.getElementById('filterEndDate').value = '';
   
-  // Admin: reset user filter
+  // Admin: reset user filters (both locations)
   const adminUserFilter = document.getElementById('adminUserFilter');
   if (adminUserFilter) {
     adminUserFilter.value = '';
+  }
+  
+  const searchUserFilter = document.getElementById('searchUserFilter');
+  if (searchUserFilter) {
+    searchUserFilter.value = '';
   }
   
   currentFilters = {};

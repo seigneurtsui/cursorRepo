@@ -263,9 +263,12 @@ router.put('/profile', authenticate, async (req, res) => {
 // Change password
 router.post('/change-password', authenticate, async (req, res) => {
   try {
-    const { oldPassword, newPassword } = req.body;
-
-    if (!oldPassword || !newPassword) {
+    const { oldPassword, newPassword, currentPassword } = req.body;
+    
+    // Support both oldPassword and currentPassword parameter names
+    const oldPwd = oldPassword || currentPassword;
+    
+    if (!oldPwd || !newPassword) {
       return res.status(400).json({ error: '请提供旧密码和新密码' });
     }
 
@@ -615,6 +618,82 @@ router.get('/admin/export-users', authenticate, requireAdmin, async (req, res) =
   } catch (error) {
     console.error('导出用户错误:', error);
     res.status(500).json({ error: '导出用户失败' });
+  }
+});
+
+// Create new user (admin only)
+router.post('/admin/create-user', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { email, username, password, balance, phone, isAdmin } = req.body;
+
+    if (!email || !username || !password) {
+      return res.status(400).json({ error: '邮箱、用户名和密码为必填项' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: '密码至少需要8位字符' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: '邮箱格式不正确' });
+    }
+
+    // Check if email already exists
+    const db = require('../db/database');
+    const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: '该邮箱已被注册' });
+    }
+
+    // Hash password
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const query = `
+      INSERT INTO users (email, username, password, balance, phone, is_admin, is_active, email_verified, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())
+      RETURNING id, email, username, balance, phone, is_admin, is_active, created_at
+    `;
+    
+    const result = await db.query(query, [
+      email,
+      username,
+      hashedPassword,
+      balance || 0,
+      phone || null,
+      isAdmin || false
+    ]);
+
+    const newUser = result.rows[0];
+
+    // Send notification
+    const notificationService = require('../services/notification');
+    try {
+      await notificationService.sendNotification({
+        type: 'admin_create_user',
+        data: {
+          email: newUser.email,
+          username: newUser.username,
+          balance: newUser.balance,
+          isAdmin: newUser.is_admin,
+          createdBy: req.user.username
+        }
+      });
+    } catch (notifError) {
+      console.error('发送通知失败:', notifError);
+    }
+
+    res.json({
+      success: true,
+      message: '用户创建成功',
+      user: newUser
+    });
+  } catch (error) {
+    console.error('创建用户错误:', error);
+    res.status(500).json({ error: '创建用户失败' });
   }
 });
 

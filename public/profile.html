@@ -75,21 +75,7 @@
     <div class="card">
       <h3>💰 充值套餐</h3>
       <div class="plan-grid" id="plansContainer">
-        <div class="plan-card" onclick="selectPlan(1)">
-          <div style="font-size: 18px; font-weight: 600;">按次付费</div>
-          <div class="plan-price">¥5</div>
-          <div style="color: #666; font-size: 14px;">单次视频处理</div>
-        </div>
-        <div class="plan-card" onclick="selectPlan(2)">
-          <div style="font-size: 18px; font-weight: 600;">月度套餐</div>
-          <div class="plan-price">¥50</div>
-          <div style="color: #666; font-size: 14px;">月度无限次使用</div>
-        </div>
-        <div class="plan-card" onclick="selectPlan(3)">
-          <div style="font-size: 18px; font-weight: 600; color: #ff6b6b;">年度套餐 🔥</div>
-          <div class="plan-price">¥300</div>
-          <div style="color: #666; font-size: 14px;">年度无限次使用</div>
-        </div>
+        加载中...
       </div>
 
       <h4 style="margin-top: 25px; margin-bottom: 10px;">选择支付方式</h4>
@@ -200,6 +186,9 @@
             }
           }
           
+          // Load payment plans (always fetch latest prices)
+          await loadPaymentPlans();
+          
           loadTransactions();
         } else {
           window.location.href = '/public/login.html';
@@ -208,6 +197,51 @@
         console.error('加载用户信息失败:', error);
         window.location.href = '/public/login.html';
       }
+    }
+
+    // Load payment plans dynamically
+    async function loadPaymentPlans() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/payment-plans?t=${Date.now()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success && result.plans) {
+          renderPaymentPlans(result.plans);
+        }
+      } catch (error) {
+        console.error('加载套餐失败:', error);
+      }
+    }
+
+    // Render payment plans
+    function renderPaymentPlans(plans) {
+      const container = document.getElementById('plansContainer');
+      
+      // Sort plans by price
+      plans.sort((a, b) => a.price - b.price);
+      
+      const html = plans.map(plan => {
+        let icon = '';
+        let highlight = '';
+        
+        if (plan.type === 'yearly') {
+          icon = '🔥';
+          highlight = 'color: #ff6b6b;';
+        }
+        
+        return `
+          <div class="plan-card" onclick="selectPlan(${plan.id})">
+            <div style="font-size: 18px; font-weight: 600; ${highlight}">${plan.name} ${icon}</div>
+            <div class="plan-price">¥${parseFloat(plan.price).toFixed(2)}</div>
+            <div style="color: #666; font-size: 14px;">${plan.description || ''}</div>
+          </div>
+        `;
+      }).join('');
+      
+      container.innerHTML = html;
     }
 
     async function loadTransactions() {

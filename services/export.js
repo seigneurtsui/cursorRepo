@@ -60,6 +60,8 @@ class ExportService {
       { header: 'ID', key: 'id', width: 10 },
       { header: '文件名', key: 'original_name', width: 40 },
       { header: '视频标题', key: 'video_title', width: 40 },
+      { header: '上传者用户名', key: 'username', width: 20 },
+      { header: '上传者邮箱', key: 'user_email', width: 30 },
       { header: '文件大小', key: 'file_size', width: 15 },
       { header: '视频时长', key: 'duration', width: 15 },
       { header: '状态', key: 'status', width: 15 },
@@ -80,6 +82,8 @@ class ExportService {
         id: video.id,
         original_name: video.original_name,
         video_title: this.generateVideoTitle(video.original_name),
+        username: video.username || '-',
+        user_email: video.user_email || '-',
         file_size: this.formatFileSize(video.file_size),
         duration: this.formatTime(video.duration),
         status: video.status,
@@ -144,6 +148,8 @@ class ExportService {
           id: video.id,
           文件名: video.original_name,
           视频标题: this.generateVideoTitle(video.original_name),
+          上传者用户名: video.username || '-',
+          上传者邮箱: video.user_email || '-',
           文件大小: this.formatFileSize(video.file_size),
           视频时长: this.formatTime(video.duration),
           状态: video.status,
@@ -154,7 +160,7 @@ class ExportService {
         };
       });
 
-      fields = ['id', '文件名', '视频标题', '文件大小', '视频时长', '状态', '章节数', '上传时间', '处理时间', '章节列表'];
+      fields = ['id', '文件名', '视频标题', '上传者用户名', '上传者邮箱', '文件大小', '视频时长', '状态', '章节数', '上传时间', '处理时间', '章节列表'];
     } else {
       data = chapters.map(chapter => {
         const video = videos.find(v => v.id === chapter.video_id);
@@ -346,6 +352,9 @@ class ExportService {
         // Video header
         doc.fontSize(14).fillColor('#000').text(`${index + 1}. ${video.original_name}`, { underline: true });
         doc.fontSize(10).fillColor('#666');
+        if (video.username) {
+          doc.text(`上传者: ${video.username} (${video.user_email || ''})`);
+        }
         doc.text(`文件大小: ${this.formatFileSize(video.file_size)} | 时长: ${this.formatTime(video.duration)} | 章节: ${videoChapters.length}`);
         doc.moveDown(0.5);
 
@@ -393,6 +402,9 @@ class ExportService {
       const videoChapters = chapters.filter(ch => ch.video_id === video.id).sort((a, b) => a.chapter_index - b.chapter_index);
 
       markdown += `## ${index + 1}. ${video.original_name}\n\n`;
+      if (video.username) {
+        markdown += `- **上传者**: ${video.username} (${video.user_email || ''})\n`;
+      }
       markdown += `- **文件大小**: ${this.formatFileSize(video.file_size)}\n`;
       markdown += `- **视频时长**: ${this.formatTime(video.duration)}\n`;
       markdown += `- **状态**: ${video.status}\n`;

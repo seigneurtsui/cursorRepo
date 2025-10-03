@@ -5,6 +5,7 @@ const authService = require('../services/auth');
 const paymentService = require('../services/payment');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const notificationService = require('../services/notification');
+const emailService = require('../services/email');
 
 // Send verification code
 router.post('/send-code', async (req, res) => {
@@ -18,16 +19,22 @@ router.post('/send-code', async (req, res) => {
     // Create verification code
     const verification = await authService.createVerificationCode(email);
 
-    // Send email notification
+    // Send email using QQ Mail service
     try {
-      await notificationService.sendEmail({
-        to: email,
-        subject: '视频章节生成器 - 验证码',
-        text: `您的验证码是: ${verification.code}\n\n该验证码将在10分钟后过期。\n\n如果这不是您的操作，请忽略此邮件。`
-      });
+      await emailService.sendVerificationCode(email, verification.code);
+      console.log(`✅ Verification code sent to ${email}: ${verification.code}`);
     } catch (emailError) {
-      console.error('发送邮件失败:', emailError);
-      // Don't fail the request if email sending fails
+      console.error('❌ 发送邮件失败:', emailError);
+      // Also try notification service as fallback
+      try {
+        await notificationService.sendNotification(
+          '验证码发送',
+          `邮箱: ${email}\n验证码: ${verification.code}\n有效期: 10分钟`
+        );
+        console.log('✅ Verification code sent via notification service');
+      } catch (notifError) {
+        console.error('❌ 通知服务也失败:', notifError);
+      }
     }
 
     res.json({ 

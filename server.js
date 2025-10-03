@@ -753,7 +753,8 @@ app.get('/api/export-custom-excel/:id', async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
 
-  } catch (    console.error('❌ Export custom Excel error:', error);
+  } catch (error) {
+    console.error('❌ Export custom Excel error:', error);
     res.status(500).json({ error: error.message });
   }
 });

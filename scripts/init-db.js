@@ -171,10 +171,14 @@ const initializeDatabase = async () => {
     // Password hash generated with bcrypt.hash('admin123456', 10)
     await client.query(`
       INSERT INTO users (email, username, password_hash, is_admin, is_active, email_verified)
-      VALUES ('admin@example.com', 'admin', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', TRUE, TRUE, TRUE)
-      ON CONFLICT DO NOTHING;
+      VALUES ('admin@example.com', 'admin', '$2a$10$vfK6XonVhYEQmfFOQOIe5eGZvbD1RQTYBUwdzOcmwBy.bL/Zd2hBq', TRUE, TRUE, TRUE)
+      ON CONFLICT (email) DO UPDATE SET 
+        password_hash = EXCLUDED.password_hash,
+        is_admin = EXCLUDED.is_admin,
+        is_active = EXCLUDED.is_active,
+        email_verified = EXCLUDED.email_verified;
     `);
-    console.log('✅ Created default admin user (email: admin@example.com, password: admin123456)');
+    console.log('✅ Created/Updated default admin user (email: admin@example.com, password: admin123456)');
 
     // Create indexes for better performance
     await client.query(`

@@ -7,6 +7,13 @@ let currentFilters = {};
 let ws = null;
 let selectedVideoIds = new Set();
 
+// Processing timer variables
+let processingStartTime = null;
+let processingTimerInterval = null;
+let currentProcessingVideoName = null;
+let currentProcessingVideoIndex = null;
+let totalVideosToProcess = 0;
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   initializeEventListeners();
@@ -86,13 +93,19 @@ function handleWebSocketMessage(data) {
       break;
     case 'progress':
       updateProgress(data.videoId, data.stage, data.progress, data.message);
+      // Update current video info if provided
+      if (data.videoName) {
+        updateCurrentProcessingInfo(data.videoName, data.videoIndex, data.totalVideos);
+      }
       break;
     case 'completed':
       showToast(`视频处理完成！生成了 ${data.chapters} 个章节`, 'success');
+      stopProcessingTimer();
       loadVideos();
       break;
     case 'error':
       showToast(`处理失败: ${data.error}`, 'error');
+      stopProcessingTimer();
       loadVideos();
       break;
   }
@@ -1048,5 +1061,80 @@ async function batchExportCustomExcel() {
   } catch (error) {
     console.error('Batch export custom Excel error:', error);
     showToast('批量导出失败: ' + error.message, 'error');
+  }
+}
+
+// Start processing timer
+function startProcessingTimer() {
+  if (!processingStartTime) {
+    processingStartTime = Date.now();
+  }
+  
+  if (!processingTimerInterval) {
+    processingTimerInterval = setInterval(updateProcessingTimer, 1000);
+  }
+}
+
+// Update processing timer display
+function updateProcessingTimer() {
+  if (!processingStartTime) return;
+  
+  const elapsed = Date.now() - processingStartTime;
+  const hours = Math.floor(elapsed / 3600000);
+  const minutes = Math.floor((elapsed % 3600000) / 60000);
+  const seconds = Math.floor((elapsed % 60000) / 1000);
+  
+  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  
+  const timeElement = document.getElementById('totalProcessingTime');
+  if (timeElement) {
+    timeElement.textContent = timeStr;
+  }
+}
+
+// Stop processing timer
+function stopProcessingTimer() {
+  if (processingTimerInterval) {
+    clearInterval(processingTimerInterval);
+    processingTimerInterval = null;
+  }
+  processingStartTime = null;
+  
+  // Reset display
+  const timeElement = document.getElementById('totalProcessingTime');
+  if (timeElement) {
+    timeElement.textContent = '00:00:00';
+  }
+  
+  const nameElement = document.getElementById('currentVideoName');
+  if (nameElement) {
+    nameElement.textContent = '无';
+  }
+  
+  const indexElement = document.getElementById('currentVideoIndex');
+  if (indexElement) {
+    indexElement.textContent = '';
+  }
+}
+
+// Update current processing info
+function updateCurrentProcessingInfo(videoName, videoIndex, totalVideos) {
+  currentProcessingVideoName = videoName;
+  currentProcessingVideoIndex = videoIndex;
+  totalVideosToProcess = totalVideos || 0;
+  
+  const nameElement = document.getElementById('currentVideoName');
+  if (nameElement) {
+    nameElement.textContent = videoName || '无';
+  }
+  
+  const indexElement = document.getElementById('currentVideoIndex');
+  if (indexElement && videoIndex && totalVideos) {
+    indexElement.textContent = `(${videoIndex}/${totalVideos})`;
+  }
+  
+  // Start timer if not already started
+  if (!processingTimerInterval) {
+    startProcessingTimer();
   }
 }

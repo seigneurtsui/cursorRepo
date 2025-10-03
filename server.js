@@ -108,7 +108,7 @@ function broadcastProgress(data) {
 }
 
 // Process video: extract transcript and generate chapters
-async function processVideoFile(videoId) {
+async function processVideoFile(videoId, videoIndex = null, totalVideos = null) {
   let video = null;
   
   try {
@@ -129,7 +129,10 @@ async function processVideoFile(videoId) {
       type: 'status',
       videoId,
       status: 'processing',
-      message: '开始处理视频...'
+      message: '开始处理视频...',
+      videoName: video.original_name,
+      videoIndex,
+      totalVideos
     });
 
     // Stage 1: Get video duration
@@ -138,7 +141,10 @@ async function processVideoFile(videoId) {
       videoId,
       stage: 'duration',
       progress: 10,
-      message: '获取视频时长...'
+      message: '获取视频时长...',
+      videoName: video.original_name,
+      videoIndex,
+      totalVideos
     });
 
     const duration = await whisperService.getVideoDuration(video.file_path);
@@ -150,7 +156,10 @@ async function processVideoFile(videoId) {
       videoId,
       stage: 'transcription',
       progress: 20,
-      message: '提取音频并转录...'
+      message: '提取音频并转录...',
+      videoName: video.original_name,
+      videoIndex,
+      totalVideos
     });
 
     const transcript = await whisperService.processVideo(video.file_path, {
@@ -170,7 +179,10 @@ async function processVideoFile(videoId) {
       videoId,
       stage: 'transcription',
       progress: 60,
-      message: '转录完成，开始生成章节...'
+      message: '转录完成，开始生成章节...',
+      videoName: video.original_name,
+      videoIndex,
+      totalVideos
     });
 
     // Stage 3: Generate chapters using GPT
@@ -179,7 +191,10 @@ async function processVideoFile(videoId) {
       videoId,
       stage: 'chapter_generation',
       progress: 70,
-      message: '使用AI生成章节...'
+      message: '使用AI生成章节...',
+      videoName: video.original_name,
+      videoIndex,
+      totalVideos
     });
 
     const chaptersData = await gptService.generateChapters(transcript, duration);
@@ -275,7 +290,10 @@ async function processVideoFile(videoId) {
       videoId,
       stage: 'saving',
       progress: 90,
-      message: '保存章节数据...'
+      message: '保存章节数据...',
+      videoName: video.original_name,
+      videoIndex,
+      totalVideos
     });
 
     const chapters = validatedChapters.map(ch => ({
@@ -301,7 +319,10 @@ async function processVideoFile(videoId) {
       videoId,
       stage: 'completed',
       progress: 100,
-      message: '处理完成！'
+      message: '处理完成！',
+      videoName: video.original_name,
+      videoIndex,
+      totalVideos
     });
 
     broadcastProgress({
@@ -409,9 +430,13 @@ app.post('/api/process', async (req, res) => {
     // Process videos in background
     const startTime = Date.now();
     const results = [];
+    const totalVideos = videoIds.length;
 
-    for (const videoId of videoIds) {
-      const result = await processVideoFile(videoId);
+    for (let i = 0; i < videoIds.length; i++) {
+      const videoId = videoIds[i];
+      const videoIndex = i + 1;
+      
+      const result = await processVideoFile(videoId, videoIndex, totalVideos);
       const video = await db.videos.findById(videoId);
       const chapters = await db.chapters.findByVideoId(videoId);
       
@@ -691,112 +716,4 @@ app.get('/api/export-custom-excel/:id', async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
 
-  } catch (error) {
-    console.error('❌ Export custom Excel error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Batch export custom Excel (merged into one file)
-app.post('/api/batch-export-custom-excel', async (req, res) => {
-  try {
-    const { videoIds } = req.body;
-    
-    if (!videoIds || videoIds.length === 0) {
-      return res.status(400).json({ error: '请选择要导出的视频' });
-    }
-
-    // Generate custom Excel with all videos
-    const ExcelJS = require('exceljs');
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('批量视频数据');
-
-    // Set columns
-    sheet.columns = [
-      { header: 'title', key: 'title', width: 50 },
-      { header: 'description', key: 'description', width: 80 },
-      { header: 'filename', key: 'filename', width: 60 }
-    ];
-
-    // Style header
-    const headerRow = sheet.getRow(1);
-    headerRow.font = { bold: true, size: 12 };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-
-    // Process each video
-    for (const videoId of videoIds) {
-      const video = await db.videos.findById(videoId);
-      if (!video) continue;
-
-      const chapters = await db.chapters.findByVideoId(videoId);
-
-      // Generate video title
-      const videoTitle = video.original_name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-      
-      // Format chapters list
-      let description = '';
-      if (chapters && chapters.length > 0) {
-        chapters.sort((a, b) => a.chapter_index - b.chapter_index);
-        chapters.forEach((ch) => {
-          const startTime = exportService.formatTime(ch.start_time);
-          const endTime = exportService.formatTime(ch.end_time);
-          description += `${ch.chapter_index}. [${startTime} - ${endTime}] ${ch.title}\n`;
-          if (ch.description) {
-            description += `   ${ch.description}\n`;
-          }
-          description += '\n';
-        });
-      }
-
-      // Generate filename with absolute path
-      const filename = '/Users/seigneur/lavoro/video-chapters/' + video.file_path;
-
-      // Add data row
-      sheet.addRow({
-        title: videoTitle,
-        description: description.trim(),
-        filename: filename
-      });
-    }
-
-    // Set response headers
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=custom_export_batch_${Date.now()}.xlsx`);
-    
-    await workbook.xlsx.write(res);
-    res.end();
-
-  } catch (error) {
-    console.error('❌ Batch export custom Excel error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Serve frontend
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Start server
-async function startServer() {
-  await ensureDirectories();
-  
-  server.listen(PORT, () => {
-    console.log(`
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║   🎬 视频章节生成器 - Video Chapter Generator                  ║
-║                                                               ║
-║   🚀 Server running on: http://localhost:${PORT}                ║
-║   📊 Database: PostgreSQL                                     ║
-║   🤖 AI: Whisper + GPT-4 Turbo                                ║
-║   📢 Notifications: 4 channels ready                          ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
-    `);
-  });
-}
-
-startServer().catch(console.error);
-
-module.exports = app;
+  } catch (

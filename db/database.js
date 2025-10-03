@@ -67,35 +67,50 @@ const db = {
     },
 
     findAll: async (filters = {}) => {
-      let query = 'SELECT * FROM videos WHERE 1=1';
+      let query = 'SELECT DISTINCT v.* FROM videos v WHERE 1=1';
       const params = [];
       let paramCount = 1;
 
       if (filters.status) {
-        query += ` AND status = $${paramCount}`;
+        query += ` AND v.status = $${paramCount}`;
         params.push(filters.status);
         paramCount++;
       }
 
       if (filters.keyword) {
-        query += ` AND (original_name ILIKE $${paramCount} OR filename ILIKE $${paramCount})`;
+        // Search in videos table: filename, original_name, transcript
+        // AND chapters table: title, description
+        query = `
+          SELECT DISTINCT v.* 
+          FROM videos v
+          LEFT JOIN chapters c ON v.id = c.video_id
+          WHERE 1=1
+          ${filters.status ? `AND v.status = $1` : ''}
+          AND (
+            v.original_name ILIKE $${paramCount} OR 
+            v.filename ILIKE $${paramCount} OR 
+            v.transcript ILIKE $${paramCount} OR
+            c.title ILIKE $${paramCount} OR
+            c.description ILIKE $${paramCount}
+          )
+        `;
         params.push(`%${filters.keyword}%`);
         paramCount++;
       }
 
       if (filters.startDate) {
-        query += ` AND created_at >= $${paramCount}`;
+        query += ` AND v.created_at >= $${paramCount}`;
         params.push(filters.startDate);
         paramCount++;
       }
 
       if (filters.endDate) {
-        query += ` AND created_at <= $${paramCount}`;
+        query += ` AND v.created_at <= $${paramCount}`;
         params.push(filters.endDate);
         paramCount++;
       }
 
-      query += ' ORDER BY created_at DESC';
+      query += ' ORDER BY v.created_at DESC';
 
       if (filters.limit && filters.limit !== 'ALL') {
         query += ` LIMIT $${paramCount}`;
@@ -124,7 +139,18 @@ const db = {
       }
 
       if (filters.keyword) {
-        query += ` AND (original_name ILIKE $${paramCount} OR filename ILIKE $${paramCount})`;
+        // Search in videos table: filename, original_name, transcript
+        // AND chapters table: title, description
+        query += ` AND (
+          original_name ILIKE $${paramCount} 
+          OR filename ILIKE $${paramCount}
+          OR transcript ILIKE $${paramCount}
+          OR EXISTS (
+            SELECT 1 FROM chapters 
+            WHERE chapters.video_id = videos.id 
+            AND (chapters.title ILIKE $${paramCount} OR chapters.description ILIKE $${paramCount})
+          )
+        )`;
         params.push(`%${filters.keyword}%`);
         paramCount++;
       }

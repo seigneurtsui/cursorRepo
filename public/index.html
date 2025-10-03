@@ -139,6 +139,21 @@
     <!-- Progress Section -->
     <section class="progress-section" id="progressSection" style="display: none;">
       <h3>⚙️ 处理进度</h3>
+      <div id="currentProcessingInfo" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong style="color: #007bff;">正在处理：</strong>
+            <span id="currentVideoName" style="font-weight: 500;">无</span>
+            <span id="currentVideoIndex" style="margin-left: 10px; color: #6c757d;"></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 20px;">
+            <div>
+              <strong style="color: #28a745;">累计用时：</strong>
+              <span id="totalProcessingTime" style="font-size: 18px; font-weight: 600; color: #28a745;">00:00:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="progressContainer"></div>
     </section>
 

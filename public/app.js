@@ -57,19 +57,6 @@ async function checkAuth() {
           await loadAdminUserFilter();
         }
         
-        // Show admin user filter in search section
-        const searchUserFilterGroup = document.getElementById('searchUserFilterGroup');
-        if (searchUserFilterGroup) {
-          searchUserFilterGroup.style.display = 'block';
-          await loadSearchUserFilter();
-        }
-        
-        // Show uploader email search in search section
-        const uploaderEmailSearchGroup = document.getElementById('uploaderEmailSearchGroup');
-        if (uploaderEmailSearchGroup) {
-          uploaderEmailSearchGroup.style.display = 'block';
-        }
-        
         // Show export all button in search section
         const searchExportAllContainer = document.getElementById('searchExportAllContainer');
         if (searchExportAllContainer) {
@@ -117,32 +104,6 @@ async function loadAdminUserFilter() {
         filterSelect.addEventListener('change', function() {
           applyFilters();
         });
-      }
-    }
-  } catch (error) {
-    console.error('加载会员列表失败:', error);
-  }
-}
-
-// Load search user filter dropdown (for search section)
-async function loadSearchUserFilter() {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE}/api/auth/admin/users?limit=1000`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      const filterSelect = document.getElementById('searchUserFilter');
-      if (filterSelect) {
-        const optionsHTML = result.users
-          .filter(u => !u.is_admin) // Exclude admins from filter
-          .map(user => 
-            `<option value="${user.id}">${user.username} (${user.email})</option>`
-          ).join('');
-        filterSelect.innerHTML = '<option value="">全部会员</option>' + optionsHTML;
       }
     }
   } catch (error) {
@@ -675,17 +636,6 @@ function resetFilters() {
   const adminUserFilter = document.getElementById('adminUserFilter');
   if (adminUserFilter) {
     adminUserFilter.value = '';
-  }
-  
-  const searchUserFilter = document.getElementById('searchUserFilter');
-  if (searchUserFilter) {
-    searchUserFilter.value = '';
-  }
-  
-  // Admin: reset uploader email search
-  const uploaderEmailSearch = document.getElementById('uploaderEmailSearch');
-  if (uploaderEmailSearch) {
-    uploaderEmailSearch.value = '';
   }
   
   currentFilters = {};
@@ -1548,10 +1498,10 @@ function renderMemberList() {
 function viewMemberVideos(userId, username) {
   closeMemberExplorer();
   
-  // Set the filter
-  const searchUserFilter = document.getElementById('searchUserFilter');
-  if (searchUserFilter) {
-    searchUserFilter.value = userId;
+  // Set the filter in video list header
+  const adminUserFilter = document.getElementById('adminUserFilter');
+  if (adminUserFilter) {
+    adminUserFilter.value = userId;
   }
   
   // Apply filters

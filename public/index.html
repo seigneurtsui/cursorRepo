@@ -97,27 +97,44 @@
       </div>
     </section>
 
-    <!-- Export Section -->
-    <section class="export-section">
-      <h3>📤 导出数据</h3>
-      <div class="export-buttons">
-        <button class="btn btn-export" onclick="exportData('excel')">
-          <span class="btn-icon">📊</span> Excel
-        </button>
-        <button class="btn btn-export" onclick="exportData('csv')">
-          <span class="btn-icon">📄</span> CSV
-        </button>
-        <button class="btn btn-export" onclick="exportData('html')">
-          <span class="btn-icon">🌐</span> HTML
-        </button>
-        <button class="btn btn-export" onclick="exportData('pdf')">
-          <span class="btn-icon">📕</span> PDF
-        </button>
-        <button class="btn btn-export" onclick="exportData('markdown')">
-          <span class="btn-icon">📝</span> Markdown
-        </button>
-      </div>
-    </section>
+  <!-- Export Section -->
+  <section class="export-section">
+    <h3>📤 导出数据</h3>
+    <div style="margin-bottom: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+      <span id="selectedCount" style="font-weight: bold;">已选择 0 个视频</span>
+      <button class="btn btn-secondary" onclick="selectAllVideos()" style="margin-left: 10px; padding: 5px 10px; font-size: 13px;">
+        全选
+      </button>
+      <button class="btn btn-secondary" onclick="clearSelection()" style="margin-left: 5px; padding: 5px 10px; font-size: 13px;">
+        清空选择
+      </button>
+    </div>
+    <div class="export-buttons">
+      <button class="btn btn-export" onclick="exportData('excel')">
+        <span class="btn-icon">📊</span> Excel
+      </button>
+      <button class="btn btn-export" onclick="exportData('csv')">
+        <span class="btn-icon">📄</span> CSV
+      </button>
+      <button class="btn btn-export" onclick="exportData('html')">
+        <span class="btn-icon">🌐</span> HTML
+      </button>
+      <button class="btn btn-export" onclick="exportData('pdf')">
+        <span class="btn-icon">📕</span> PDF
+      </button>
+      <button class="btn btn-export" onclick="exportData('markdown')">
+        <span class="btn-icon">📝</span> Markdown
+      </button>
+    </div>
+    <div class="export-buttons" style="margin-top: 15px; border-top: 2px solid #ddd; padding-top: 15px;">
+      <button class="btn btn-export" onclick="batchDownloadTranscripts()" style="background: #28a745;">
+        <span class="btn-icon">📝</span> 批量下载字幕
+      </button>
+      <button class="btn btn-export" onclick="batchExportCustomExcel()" style="background: #17a2b8;">
+        <span class="btn-icon">📊</span> 批量导出定制EXCEL
+      </button>
+    </div>
+  </section>
 
     <!-- Progress Section -->
     <section class="progress-section" id="progressSection" style="display: none;">

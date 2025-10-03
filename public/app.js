@@ -5,6 +5,7 @@ let selectedFiles = [];
 let currentPage = 1;
 let currentFilters = {};
 let ws = null;
+let selectedVideoIds = new Set();
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -339,6 +340,14 @@ function renderVideos(videos) {
             👁️ 查看章节
           </button>
         ` : ''}
+        ${video.status === 'completed' ? `
+          <button class="btn-view" onclick="viewTranscript(${video.id})">
+            📝 查看字幕
+          </button>
+          <button class="btn-primary" onclick="exportCustomExcel(${video.id})" style="font-size: 12px; padding: 6px 12px;">
+            📊 导出定制EXCEL
+          </button>
+        ` : ''}
         <button class="btn-delete" onclick="deleteVideo(${video.id})">
           🗑️ 删除
         </button>
@@ -620,6 +629,117 @@ async function exportChaptersToTxt(videoId) {
   }
 }
 
+// View transcript
+async function viewTranscript(videoId) {
+  try {
+    const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+    const result = await response.json();
+
+    if (result.success) {
+      const video = result.data;
+      const transcript = video.transcript || '暂无字幕';
+
+      const modalContent = `
+        <h2>📝 ${video.original_name} - 字幕</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+          <div class="video-meta">
+            <div class="meta-item">
+              <span class="meta-label">视频时长</span>
+              <span class="meta-value">${formatDuration(video.duration)}</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="copyTranscriptToClipboard(${videoId})" style="padding: 8px 16px;">
+              📋 复制字幕
+            </button>
+            <button class="btn btn-primary" onclick="downloadTranscript(${videoId})" style="padding: 8px 16px;">
+              💾 下载字幕
+            </button>
+          </div>
+        </div>
+        <div style="max-height: 500px; overflow-y: auto; padding: 20px; background: #f5f5f5; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 14px; line-height: 1.8;">
+          ${transcript}
+        </div>
+      `;
+
+      document.getElementById('modalContent').innerHTML = modalContent;
+      document.getElementById('videoModal').style.display = 'block';
+    }
+  } catch (error) {
+    console.error('View transcript error:', error);
+    showToast('加载字幕失败: ' + error.message, 'error');
+  }
+}
+
+// Copy transcript to clipboard
+async function copyTranscriptToClipboard(videoId) {
+  try {
+    const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+    const result = await response.json();
+
+    if (result.success && result.data.transcript) {
+      await navigator.clipboard.writeText(result.data.transcript);
+      showToast('✅ 字幕已复制到剪贴板！', 'success');
+    } else {
+      showToast('暂无字幕可复制', 'warning');
+    }
+  } catch (error) {
+    console.error('Copy transcript error:', error);
+    showToast('复制失败: ' + error.message, 'error');
+  }
+}
+
+// Download transcript
+async function downloadTranscript(videoId) {
+  try {
+    const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+    const result = await response.json();
+
+    if (result.success && result.data.transcript) {
+      const video = result.data;
+      const blob = new Blob([video.transcript], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${video.original_name.replace(/\.[^/.]+$/, '')}_字幕.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('✅ 字幕文件已下载！', 'success');
+    } else {
+      showToast('暂无字幕可下载', 'warning');
+    }
+  } catch (error) {
+    console.error('Download transcript error:', error);
+    showToast('下载失败: ' + error.message, 'error');
+  }
+}
+
+// Export custom Excel for single video
+async function exportCustomExcel(videoId) {
+  try {
+    showToast('正在生成定制 EXCEL...', 'info');
+    
+    const response = await fetch(`${API_BASE}/api/export-custom-excel/${videoId}`);
+    const blob = await response.blob();
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `custom_export_${videoId}_${Date.now()}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast('✅ 定制 EXCEL 已下载！', 'success');
+  } catch (error) {
+    console.error('Export custom Excel error:', error);
+    showToast('导出失败: ' + error.message, 'error');
+  }
+}
+
 // Export data
 async function exportData(format) {
   try {
@@ -704,3 +824,110 @@ window.onclick = function(event) {
     closeModal();
   }
 };
+
+// Toggle video selection
+function toggleVideoSelection(videoId, checked) {
+  if (checked) {
+    selectedVideoIds.add(videoId);
+  } else {
+    selectedVideoIds.delete(videoId);
+  }
+  updateSelectedCount();
+}
+
+// Update selected count display
+function updateSelectedCount() {
+  const countEl = document.getElementById('selectedCount');
+  if (countEl) {
+    countEl.textContent = `已选择 ${selectedVideoIds.size} 个视频`;
+  }
+}
+
+// Select all videos
+function selectAllVideos() {
+  document.querySelectorAll('.video-select-checkbox').forEach(checkbox => {
+    checkbox.checked = true;
+    const videoId = parseInt(checkbox.dataset.videoId);
+    selectedVideoIds.add(videoId);
+  });
+  updateSelectedCount();
+}
+
+// Clear selection
+function clearSelection() {
+  document.querySelectorAll('.video-select-checkbox').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  selectedVideoIds.clear();
+  updateSelectedCount();
+}
+
+// Batch download transcripts
+async function batchDownloadTranscripts() {
+  if (selectedVideoIds.size === 0) {
+    showToast('请先选择要下载字幕的视频', 'warning');
+    return;
+  }
+
+  showToast(`正在下载 ${selectedVideoIds.size} 个视频的字幕...`, 'info');
+
+  for (const videoId of selectedVideoIds) {
+    try {
+      const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+      const result = await response.json();
+
+      if (result.success && result.data.transcript) {
+        const video = result.data;
+        const blob = new Blob([video.transcript], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${video.original_name.replace(/\.[^/.]+$/, '')}_字幕.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } catch (error) {
+      console.error(`Download transcript error for video ${videoId}:`, error);
+    }
+  }
+
+  showToast(`✅ 已下载 ${selectedVideoIds.size} 个字幕文件！`, 'success');
+}
+
+// Batch export custom Excel
+async function batchExportCustomExcel() {
+  if (selectedVideoIds.size === 0) {
+    showToast('请先选择要导出的视频', 'warning');
+    return;
+  }
+
+  showToast(`正在导出 ${selectedVideoIds.size} 个定制 EXCEL...`, 'info');
+
+  for (const videoId of selectedVideoIds) {
+    try {
+      const response = await fetch(`${API_BASE}/api/export-custom-excel/${videoId}`);
+      const blob = await response.blob();
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `custom_export_${videoId}_${Date.now()}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      // Small delay between downloads
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error(`Export custom Excel error for video ${videoId}:`, error);
+    }
+  }
+
+  showToast(`✅ 已导出 ${selectedVideoIds.size} 个定制 EXCEL 文件！`, 'success');
+}

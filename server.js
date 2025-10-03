@@ -152,6 +152,13 @@ async function processVideoFile(videoId) {
       format: 'srt'
     });
 
+    // Save full transcript to database
+    const fullTranscript = transcript.fullText || '';
+    await db.videos.update(videoId, { 
+      transcript: fullTranscript 
+    });
+    console.log(`💾 Saved transcript to database (${fullTranscript.length} characters)`);
+
     broadcastProgress({
       type: 'progress',
       videoId,
@@ -535,6 +542,79 @@ app.post('/api/export', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Export error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export custom Excel for single video
+app.get('/api/export-custom-excel/:id', async (req, res) => {
+  try {
+    const videoId = req.params.id;
+    const video = await db.videos.findById(videoId);
+    
+    if (!video) {
+      return res.status(404).json({ error: '视频不存在' });
+    }
+
+    const chapters = await db.chapters.findByVideoId(videoId);
+
+    // Generate custom Excel
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('视频数据');
+
+    // Set columns
+    sheet.columns = [
+      { header: 'title', key: 'title', width: 50 },
+      { header: 'description', key: 'description', width: 80 },
+      { header: 'filename', key: 'filename', width: 60 }
+    ];
+
+    // Generate video title
+    const videoTitle = video.original_name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+    
+    // Format chapters list
+    let description = '';
+    if (chapters && chapters.length > 0) {
+      chapters.sort((a, b) => a.chapter_index - b.chapter_index);
+      chapters.forEach((ch) => {
+        const startTime = exportService.formatTime(ch.start_time);
+        const endTime = exportService.formatTime(ch.end_time);
+        description += `${ch.chapter_index}. [${startTime} - ${endTime}] ${ch.title}\n`;
+        if (ch.description) {
+          description += `   ${ch.description}\n`;
+        }
+        description += '\n';
+      });
+    }
+
+    // Generate filename with absolute path
+    const filename = '/Users/seigneur/lavoro/video-chapters/' + video.file_path;
+
+    // Add data row
+    sheet.addRow({
+      title: videoTitle,
+      description: description.trim(),
+      filename: filename
+    });
+
+    // Style header
+    sheet.getRow(1).font = { bold: true };
+    sheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Send file
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=custom_export_${videoId}.xlsx`);
+    
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('❌ Export custom Excel error:', error);
     res.status(500).json({ error: error.message });
   }
 });

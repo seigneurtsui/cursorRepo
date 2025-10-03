@@ -26,6 +26,7 @@ const initializeDatabase = async () => {
         file_size BIGINT,
         duration NUMERIC(10, 2),
         mime_type VARCHAR(100),
+        transcript TEXT,
         status VARCHAR(50) DEFAULT 'uploaded',
         upload_started_at TIMESTAMP DEFAULT NOW(),
         upload_completed_at TIMESTAMP,

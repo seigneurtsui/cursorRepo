@@ -64,6 +64,12 @@ async function checkAuth() {
           await loadSearchUserFilter();
         }
         
+        // Show uploader email search in search section
+        const uploaderEmailSearchGroup = document.getElementById('uploaderEmailSearchGroup');
+        if (uploaderEmailSearchGroup) {
+          uploaderEmailSearchGroup.style.display = 'block';
+        }
+        
         // Show export all button in search section
         const searchExportAllContainer = document.getElementById('searchExportAllContainer');
         if (searchExportAllContainer) {
@@ -640,13 +646,18 @@ function applyFilters() {
   const adminUserFilter = document.getElementById('adminUserFilter');
   const searchUserFilter = document.getElementById('searchUserFilter');
   const userId = adminUserFilter ? adminUserFilter.value : (searchUserFilter ? searchUserFilter.value : '');
+  
+  // Admin: uploader email search
+  const uploaderEmailSearch = document.getElementById('uploaderEmailSearch');
+  const uploaderEmail = uploaderEmailSearch ? uploaderEmailSearch.value.trim() : '';
 
   currentFilters = {
     ...(keyword && { keyword }),
     ...(status && { status }),
     ...(startDate && { startDate }),
     ...(endDate && { endDate }),
-    ...(userId && { userId })
+    ...(userId && { userId }),
+    ...(uploaderEmail && { uploaderEmail })
   };
 
   currentPage = 1;
@@ -669,6 +680,12 @@ function resetFilters() {
   const searchUserFilter = document.getElementById('searchUserFilter');
   if (searchUserFilter) {
     searchUserFilter.value = '';
+  }
+  
+  // Admin: reset uploader email search
+  const uploaderEmailSearch = document.getElementById('uploaderEmailSearch');
+  if (uploaderEmailSearch) {
+    uploaderEmailSearch.value = '';
   }
   
   currentFilters = {};

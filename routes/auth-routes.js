@@ -489,17 +489,88 @@ router.put('/admin/users/:id/adjust-balance', authenticate, requireAdmin, async 
       return res.status(400).json({ error: '无效的余额值' });
     }
 
-    const query = 'UPDATE users SET balance = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
-    const result = await require('../db/database').query(query, [balance, userId]);
-
-    if (result.rows.length === 0) {
+    const db = require('../db/database');
+    
+    // Get current balance
+    const currentUserQuery = 'SELECT balance, username FROM users WHERE id = $1';
+    const currentUserResult = await db.query(currentUserQuery, [userId]);
+    
+    if (currentUserResult.rows.length === 0) {
       return res.status(404).json({ error: '用户不存在' });
     }
+    
+    const currentBalance = parseFloat(currentUserResult.rows[0].balance);
+    const username = currentUserResult.rows[0].username;
+    const difference = balance - currentBalance;
+    
+    // Update balance
+    const updateQuery = 'UPDATE users SET balance = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
+    const result = await db.query(updateQuery, [balance, userId]);
+    
+    // Create transaction record for balance adjustment
+    const transactionQuery = `
+      INSERT INTO transactions (user_id, type, amount, status, description, created_at)
+      VALUES ($1, $2, $3, 'completed', $4, NOW())
+      RETURNING *
+    `;
+    
+    const transactionType = difference >= 0 ? 'admin_credit' : 'admin_debit';
+    const description = `管理员调整余额 (操作人: ${req.user.username})\n原余额: ¥${currentBalance.toFixed(2)}\n新余额: ¥${balance.toFixed(2)}\n差额: ${difference >= 0 ? '+' : ''}¥${difference.toFixed(2)}`;
+    
+    await db.query(transactionQuery, [
+      userId,
+      transactionType,
+      Math.abs(difference),
+      description
+    ]);
 
     res.json({ success: true, user: result.rows[0] });
   } catch (error) {
     console.error('调整余额错误:', error);
     res.status(500).json({ error: '调整余额失败' });
+  }
+});
+
+// Reset user password (admin only)
+router.post('/admin/users/:id/reset-password', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: '密码至少需要8位字符' });
+    }
+
+    const db = require('../db/database');
+    
+    // Check if user exists and is not admin
+    const checkQuery = 'SELECT is_admin, username FROM users WHERE id = $1';
+    const checkResult = await db.query(checkQuery, [userId]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    if (checkResult.rows[0].is_admin) {
+      return res.status(403).json({ error: '无法重置管理员密码' });
+    }
+
+    // Hash new password
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    const updateQuery = 'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2';
+    await db.query(updateQuery, [hashedPassword, userId]);
+
+    res.json({ 
+      success: true, 
+      message: '密码重置成功',
+      username: checkResult.rows[0].username
+    });
+  } catch (error) {
+    console.error('重置密码错误:', error);
+    res.status(500).json({ error: '重置密码失败' });
   }
 });
 

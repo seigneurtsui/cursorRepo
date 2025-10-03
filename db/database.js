@@ -93,6 +93,13 @@ const db = {
         params.push(filters.userId);
         paramCount++;
       }
+      
+      // Filter by uploader email (admin only)
+      if (filters.uploaderEmail) {
+        query += ` AND u.email ILIKE $${paramCount}`;
+        params.push(`%${filters.uploaderEmail}%`);
+        paramCount++;
+      }
 
       if (filters.status) {
         query += ` AND v.status = $${paramCount}`;

@@ -114,6 +114,13 @@
             <span class="btn-icon">↻</span> 重置
           </button>
         </div>
+        
+        <!-- Admin Only: Member Account Explorer Button -->
+        <div class="filter-group" id="memberExplorerGroup" style="display: none;">
+          <button class="btn btn-info" id="memberExplorerBtn" onclick="openMemberExplorer()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600;">
+            <span class="btn-icon">👥</span> 会员账户探索
+          </button>
+        </div>
       </div>
       
       <!-- Admin Only: Export All Button in Search Section -->
@@ -123,6 +130,37 @@
         </button>
       </div>
     </section>
+    
+    <!-- Member Explorer Modal (Admin Only) -->
+    <div id="memberExplorerModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 30px; border-radius: 15px; max-width: 900px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #667eea; padding-bottom: 15px;">
+          <h2 style="margin: 0; color: #667eea;">👥 会员账户探索器</h2>
+          <button onclick="closeMemberExplorer()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #999;">&times;</button>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-radius: 10px; border-left: 4px solid #667eea;">
+          <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+            <input type="text" id="memberSearchInput" placeholder="🔍 搜索用户名或邮箱..." style="flex: 1; padding: 10px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;" onkeyup="filterMemberList()">
+            <select id="memberStatusFilter" onchange="filterMemberList()" style="padding: 10px 15px; border: 2px solid #ddd; border-radius: 8px; min-width: 150px;">
+              <option value="">全部状态</option>
+              <option value="active">✅ 已激活</option>
+              <option value="inactive">❌ 已禁用</option>
+            </select>
+          </div>
+          <div style="font-size: 13px; color: #666;">
+            <span id="memberCountDisplay">加载中...</span>
+          </div>
+        </div>
+        
+        <div id="memberListContainer" style="min-height: 300px;">
+          <div style="text-align: center; padding: 40px; color: #999;">
+            <div style="font-size: 48px; margin-bottom: 10px;">⏳</div>
+            <div>正在加载会员列表...</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
   <!-- Export Section -->
   <section class="export-section">

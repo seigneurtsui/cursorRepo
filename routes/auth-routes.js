@@ -276,7 +276,7 @@ router.post('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({ error: '新密码至少需要8位' });
     }
 
-    await authService.changePassword(req.user.id, oldPassword, newPassword);
+    await authService.changePassword(req.user.id, oldPwd, newPassword);
     res.json({ success: true, message: '密码修改成功' });
   } catch (error) {
     console.error('修改密码错误:', error);
@@ -653,7 +653,7 @@ router.post('/admin/create-user', authenticate, requireAdmin, async (req, res) =
 
     // Create user
     const query = `
-      INSERT INTO users (email, username, password, balance, phone, is_admin, is_active, email_verified, created_at, updated_at)
+      INSERT INTO users (email, username, password_hash, balance, phone, is_admin, is_active, email_verified, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())
       RETURNING id, email, username, balance, phone, is_admin, is_active, created_at
     `;

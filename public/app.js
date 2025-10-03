@@ -69,6 +69,12 @@ async function checkAuth() {
         if (searchExportAllContainer) {
           searchExportAllContainer.style.display = 'block';
         }
+        
+        // Show member explorer button
+        const memberExplorerGroup = document.getElementById('memberExplorerGroup');
+        if (memberExplorerGroup) {
+          memberExplorerGroup.style.display = 'block';
+        }
       }
     } else {
       localStorage.removeItem('token');
@@ -1368,5 +1374,226 @@ function updateCurrentProcessingInfo(videoName, videoIndex, totalVideos) {
   // Start timer if not already started
   if (!processingTimerInterval) {
     startProcessingTimer();
+  }
+}
+
+// ===== Member Explorer Functions (Admin Only) =====
+
+let allMembersData = [];
+let filteredMembersData = [];
+
+// Open member explorer modal
+async function openMemberExplorer() {
+  document.getElementById('memberExplorerModal').style.display = 'flex';
+  await loadAllMembers();
+}
+
+// Close member explorer modal
+function closeMemberExplorer() {
+  document.getElementById('memberExplorerModal').style.display = 'none';
+  document.getElementById('memberSearchInput').value = '';
+  document.getElementById('memberStatusFilter').value = '';
+}
+
+// Load all members
+async function loadAllMembers() {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/auth/admin/users?limit=10000`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      allMembersData = result.users;
+      filteredMembersData = allMembersData;
+      renderMemberList();
+    } else {
+      showToast('加载会员列表失败', 'error');
+    }
+  } catch (error) {
+    console.error('加载会员列表失败:', error);
+    showToast('加载会员列表失败', 'error');
+  }
+}
+
+// Filter member list
+function filterMemberList() {
+  const searchText = document.getElementById('memberSearchInput').value.toLowerCase();
+  const statusFilter = document.getElementById('memberStatusFilter').value;
+  
+  filteredMembersData = allMembersData.filter(member => {
+    const matchesSearch = !searchText || 
+      member.username.toLowerCase().includes(searchText) ||
+      member.email.toLowerCase().includes(searchText);
+    
+    const matchesStatus = !statusFilter || 
+      (statusFilter === 'active' && member.is_active) ||
+      (statusFilter === 'inactive' && !member.is_active);
+    
+    return matchesSearch && matchesStatus;
+  });
+  
+  renderMemberList();
+}
+
+// Render member list
+function renderMemberList() {
+  const container = document.getElementById('memberListContainer');
+  
+  // Update count
+  document.getElementById('memberCountDisplay').innerHTML = `
+    共找到 <strong style="color: #667eea;">${filteredMembersData.length}</strong> 个会员账户
+    ${filteredMembersData.length !== allMembersData.length ? `（从 ${allMembersData.length} 个中筛选）` : ''}
+  `;
+  
+  if (filteredMembersData.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 60px 20px; color: #999;">
+        <div style="font-size: 64px; margin-bottom: 15px;">🔍</div>
+        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">未找到匹配的会员</div>
+        <div style="font-size: 14px;">请尝试修改搜索条件</div>
+      </div>
+    `;
+    return;
+  }
+  
+  const memberCards = filteredMembersData.map(member => {
+    const statusBadge = member.is_active 
+      ? '<span style="background: #d4edda; color: #155724; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">✅ 已激活</span>'
+      : '<span style="background: #f8d7da; color: #721c24; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">❌ 已禁用</span>';
+    
+    const adminBadge = member.is_admin
+      ? '<span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-left: 5px;">🔑 管理员</span>'
+      : '';
+    
+    const balanceColor = member.balance >= 100 ? '#28a745' : (member.balance >= 10 ? '#ffc107' : '#dc3545');
+    
+    return `
+      <div style="border: 2px solid #e9ecef; border-radius: 12px; padding: 20px; margin-bottom: 15px; background: white; transition: all 0.3s; cursor: pointer;" 
+           onmouseover="this.style.borderColor='#667eea'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.15)'" 
+           onmouseout="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'"
+           onclick="viewMemberVideos(${member.id}, '${member.username}')">
+        
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+          <div style="flex: 1;">
+            <div style="font-size: 18px; font-weight: 700; color: #333; margin-bottom: 5px;">
+              👤 ${member.username}
+              ${adminBadge}
+            </div>
+            <div style="font-size: 14px; color: #666; margin-bottom: 8px;">
+              📧 ${member.email}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            ${statusBadge}
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; padding-top: 12px; border-top: 1px solid #f0f0f0;">
+          <div>
+            <div style="font-size: 12px; color: #999; margin-bottom: 3px;">💰 账户余额</div>
+            <div style="font-size: 20px; font-weight: 700; color: ${balanceColor};">¥${parseFloat(member.balance).toFixed(2)}</div>
+          </div>
+          
+          <div>
+            <div style="font-size: 12px; color: #999; margin-bottom: 3px;">📅 注册时间</div>
+            <div style="font-size: 14px; color: #333;">${new Date(member.created_at).toLocaleDateString('zh-CN')}</div>
+          </div>
+          
+          ${member.phone ? `
+            <div>
+              <div style="font-size: 12px; color: #999; margin-bottom: 3px;">📱 手机号</div>
+              <div style="font-size: 14px; color: #333;">${member.phone}</div>
+            </div>
+          ` : ''}
+        </div>
+        
+        <div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #f0f0f0; text-align: right;">
+          <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); viewMemberVideos(${member.id}, '${member.username}')" 
+                  style="padding: 6px 16px; font-size: 13px; background: #667eea; margin-right: 8px;">
+            📹 查看视频
+          </button>
+          <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); exportMemberVideos(${member.id}, '${member.username}')" 
+                  style="padding: 6px 16px; font-size: 13px; background: #17a2b8;">
+            📥 导出Excel
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  container.innerHTML = memberCards;
+}
+
+// View member's videos
+function viewMemberVideos(userId, username) {
+  closeMemberExplorer();
+  
+  // Set the filter
+  const searchUserFilter = document.getElementById('searchUserFilter');
+  if (searchUserFilter) {
+    searchUserFilter.value = userId;
+  }
+  
+  // Apply filters
+  applyFilters();
+  
+  // Scroll to video list
+  document.querySelector('.video-list-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  
+  showToast(`正在显示 ${username} 的视频`, 'success');
+}
+
+// Export member's videos to Excel
+async function exportMemberVideos(userId, username) {
+  if (!confirm(`确定要导出 ${username} 的所有视频信息吗？`)) return;
+  
+  try {
+    showToast('正在生成Excel文件...', 'info');
+    const token = localStorage.getItem('token');
+    
+    // Get member's videos
+    const response = await fetch(`${API_BASE}/api/videos?userId=${userId}&limit=ALL`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success && result.data.length > 0) {
+      const videoIds = result.data.map(v => v.id);
+      
+      // Export via existing export API
+      const exportResponse = await fetch(`${API_BASE}/api/export`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          format: 'excel',
+          videoIds: videoIds
+        })
+      });
+      
+      if (exportResponse.ok) {
+        const blob = await exportResponse.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${username}_videos_${Date.now()}.xlsx`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast(`✅ 成功导出 ${username} 的 ${result.data.length} 个视频`, 'success');
+      } else {
+        throw new Error('导出失败');
+      }
+    } else {
+      showToast(`${username} 还没有上传视频`, 'warning');
+    }
+  } catch (error) {
+    console.error('Export member videos error:', error);
+    showToast('导出失败: ' + error.message, 'error');
   }
 }

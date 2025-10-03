@@ -9,6 +9,37 @@ const emailService = require('../services/email');
 const captchaService = require('../services/captcha');
 const { v4: uuidv4 } = require('uuid');
 
+// Check email availability and validity
+router.post('/check-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: '请提供邮箱地址' });
+    }
+
+    // Basic format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.json({ valid: false, exists: false, message: '邮箱格式不正确' });
+    }
+
+    // Check if email exists in database
+    const db = require('../db/database');
+    const result = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length > 0) {
+      return res.json({ valid: true, exists: true, message: '该邮箱已被注册' });
+    }
+
+    // Email doesn't exist, it's available
+    res.json({ valid: true, exists: false, message: '邮箱可用' });
+  } catch (error) {
+    console.error('检查邮箱错误:', error);
+    res.status(500).json({ error: '检查邮箱失败' });
+  }
+});
+
 // Generate captcha
 router.get('/captcha', async (req, res) => {
   try {

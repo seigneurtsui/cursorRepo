@@ -401,7 +401,8 @@ app.post('/api/upload', authenticate, upload.array('videos', 50), async (req, re
         filePath: file.path,
         fileSize: stats.size,
         mimeType: file.mimetype,
-        status: 'uploaded'
+        status: 'uploaded',
+        userId: req.user.id // Associate with current user
       });
 
       uploadedVideos.push(video);
@@ -498,8 +499,8 @@ app.post('/api/process', authenticate, async (req, res) => {
   }
 });
 
-// Get all videos with pagination and filters
-app.get('/api/videos', async (req, res) => {
+// Get all videos with pagination and filters (require authentication for data isolation)
+app.get('/api/videos', authenticate, async (req, res) => {
   try {
     const {
       page = 1,
@@ -516,11 +517,18 @@ app.get('/api/videos', async (req, res) => {
       startDate,
       endDate,
       limit: limit === 'ALL' ? null : limit,
-      offset: limit === 'ALL' ? 0 : (parseInt(page) - 1) * parseInt(limit)
+      offset: limit === 'ALL' ? 0 : (parseInt(page) - 1) * parseInt(limit),
+      userId: req.user.is_admin ? null : req.user.id // Admin can see all, users see only their own
     };
 
     const videos = await db.videos.findAll(filters);
-    const total = await db.videos.count({ keyword, status, startDate, endDate });
+    const total = await db.videos.count({ 
+      keyword, 
+      status, 
+      startDate, 
+      endDate,
+      userId: req.user.is_admin ? null : req.user.id
+    });
 
     // Get chapter counts for each video
     const videosWithChapters = await Promise.all(

@@ -374,7 +374,22 @@ async function loadVideos() {
       ...currentFilters
     });
 
-    const response = await fetch(`${API_BASE}/api/videos?${params}`);
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/videos?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Check authentication
+    if (response.status === 401) {
+      showToast('登录已过期，请重新登录', 'error');
+      setTimeout(() => {
+        window.location.href = '/public/login.html';
+      }, 1500);
+      return;
+    }
+    
     const result = await response.json();
 
     if (result.success) {

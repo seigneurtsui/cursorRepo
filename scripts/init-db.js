@@ -27,6 +27,7 @@ const initializeDatabase = async () => {
         duration NUMERIC(10, 2),
         mime_type VARCHAR(100),
         transcript TEXT,
+        user_id INT,
         status VARCHAR(50) DEFAULT 'uploaded',
         upload_started_at TIMESTAMP DEFAULT NOW(),
         upload_completed_at TIMESTAMP,
@@ -184,6 +185,7 @@ const initializeDatabase = async () => {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
       CREATE INDEX IF NOT EXISTS idx_videos_created_at ON videos(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_videos_user_id ON videos(user_id);
       CREATE INDEX IF NOT EXISTS idx_chapters_video_id ON chapters(video_id);
       CREATE INDEX IF NOT EXISTS idx_chapters_start_time ON chapters(start_time);
       CREATE INDEX IF NOT EXISTS idx_processing_logs_video_id ON processing_logs(video_id);

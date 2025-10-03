@@ -198,7 +198,8 @@
       <!-- 必填字段 -->
       <div class="form-group">
         <label for="email">邮箱地址 <span class="required">*</span></label>
-        <input type="email" id="email" name="email" placeholder="请输入邮箱" required>
+        <input type="email" id="email" name="email" placeholder="请输入邮箱" required onblur="validateEmail()" oninput="clearEmailValidation()">
+        <div id="emailValidation" style="font-size: 12px; margin-top: 5px;"></div>
       </div>
 
       <div class="form-group">
@@ -281,6 +282,62 @@
     window.addEventListener('DOMContentLoaded', () => {
       loadCaptcha();
     });
+
+    // Email validation
+    let emailValidationResult = null;
+
+    function clearEmailValidation() {
+      const validationDiv = document.getElementById('emailValidation');
+      validationDiv.textContent = '';
+      emailValidationResult = null;
+    }
+
+    async function validateEmail() {
+      const email = document.getElementById('email').value;
+      const validationDiv = document.getElementById('emailValidation');
+      
+      if (!email) {
+        validationDiv.textContent = '';
+        return;
+      }
+
+      // Basic format check
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        validationDiv.innerHTML = '<span style="color: #dc3545;">❌ 邮箱格式不正确</span>';
+        emailValidationResult = false;
+        return;
+      }
+
+      // Show checking status
+      validationDiv.innerHTML = '<span style="color: #17a2b8;"><span class="loading-spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> 检查邮箱有效性...</span>';
+
+      try {
+        // Check if email already exists
+        const response = await fetch(`${API_BASE}/api/auth/check-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (result.exists) {
+          validationDiv.innerHTML = '<span style="color: #dc3545;">❌ 该邮箱已被注册</span>';
+          emailValidationResult = false;
+        } else if (result.valid) {
+          validationDiv.innerHTML = '<span style="color: #28a745;">✅ 邮箱可用</span>';
+          emailValidationResult = true;
+        } else {
+          validationDiv.innerHTML = '<span style="color: #dc3545;">❌ 邮箱无效或不存在</span>';
+          emailValidationResult = false;
+        }
+      } catch (error) {
+        console.error('邮箱验证错误:', error);
+        validationDiv.innerHTML = '<span style="color: #ffc107;">⚠️ 无法验证邮箱，但可以继续注册</span>';
+        emailValidationResult = null; // 允许继续
+      }
+    }
 
     // Load captcha
     async function loadCaptcha() {
@@ -417,6 +474,21 @@
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      // Check email validation result
+      if (emailValidationResult === false) {
+        showToast('❌ 请使用有效的邮箱地址', 'error');
+        return;
+      }
+
+      // If not validated yet, validate now
+      if (emailValidationResult === null) {
+        await validateEmail();
+        if (emailValidationResult === false) {
+          showToast('❌ 请使用有效的邮箱地址', 'error');
+          return;
+        }
+      }
       
       const formData = {
         email: document.getElementById('email').value,

@@ -44,8 +44,8 @@ const db = {
   videos: {
     create: async (videoData) => {
       const query = `
-        INSERT INTO videos (filename, original_name, file_path, file_size, mime_type, status, upload_started_at)
-        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        INSERT INTO videos (filename, original_name, file_path, file_size, mime_type, status, user_id, upload_started_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
         RETURNING *;
       `;
       const values = [
@@ -54,7 +54,8 @@ const db = {
         videoData.filePath,
         videoData.fileSize,
         videoData.mimeType,
-        videoData.status || 'uploaded'
+        videoData.status || 'uploaded',
+        videoData.userId || null
       ];
       const result = await db.query(query, values);
       return result.rows[0];
@@ -70,6 +71,13 @@ const db = {
       let query = 'SELECT DISTINCT v.* FROM videos v WHERE 1=1';
       const params = [];
       let paramCount = 1;
+
+      // Filter by user_id (for data isolation)
+      if (filters.userId) {
+        query += ` AND v.user_id = $${paramCount}`;
+        params.push(filters.userId);
+        paramCount++;
+      }
 
       if (filters.status) {
         query += ` AND v.status = $${paramCount}`;
@@ -131,6 +139,13 @@ const db = {
       let query = 'SELECT COUNT(*) FROM videos WHERE 1=1';
       const params = [];
       let paramCount = 1;
+
+      // Filter by user_id (for data isolation)
+      if (filters.userId) {
+        query += ` AND user_id = $${paramCount}`;
+        params.push(filters.userId);
+        paramCount++;
+      }
 
       if (filters.status) {
         query += ` AND status = $${paramCount}`;

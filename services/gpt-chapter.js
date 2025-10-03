@@ -142,7 +142,8 @@ ${segments.slice(0, 50).map(s => `[${this.formatTime(s.startTime)} - ${this.form
 
       console.log(`✅ Successfully parsed ${data.chapters.length} chapters`);
 
-      return data.chapters.map((ch, idx) => ({
+      // Validate and sanitize chapter data
+      const chapters = data.chapters.map((ch, idx) => ({
         chapterIndex: ch.index || (idx + 1),
         startTime: parseFloat(ch.startTime) || 0,
         endTime: parseFloat(ch.endTime) || 0,
@@ -150,6 +151,11 @@ ${segments.slice(0, 50).map(s => `[${this.formatTime(s.startTime)} - ${this.form
         description: ch.description || '',
         keyPoints: ch.keyPoints || []
       }));
+
+      // Sort chapters by start time
+      chapters.sort((a, b) => a.startTime - b.startTime);
+
+      return chapters;
 
     } catch (error) {
       console.error('❌ Failed to parse LLM response:', error);

@@ -171,7 +171,32 @@ async function processVideoFile(videoId) {
 
     const chaptersData = await gptService.generateChapters(transcript, duration);
 
-    // Stage 4: Save chapters to database
+    // Stage 4: Validate and adjust chapter times
+    console.log(`🔍 Validating chapter times against video duration: ${duration}s`);
+    const validatedChapters = chaptersData.map((ch, idx) => {
+      let startTime = Math.max(0, Math.min(ch.startTime, duration));
+      let endTime = Math.max(startTime, Math.min(ch.endTime, duration));
+      
+      // Ensure chapters don't overlap
+      if (idx > 0) {
+        const prevEnd = validatedChapters[idx - 1].endTime;
+        if (startTime < prevEnd) {
+          startTime = prevEnd;
+          endTime = Math.max(startTime, endTime);
+        }
+      }
+      
+      return {
+        chapterIndex: ch.chapterIndex,
+        startTime,
+        endTime,
+        title: ch.title,
+        description: ch.description || '',
+        keyPoints: ch.keyPoints || []
+      };
+    });
+
+    // Stage 5: Save chapters to database
     broadcastProgress({
       type: 'progress',
       videoId,
@@ -180,7 +205,7 @@ async function processVideoFile(videoId) {
       message: '保存章节数据...'
     });
 
-    const chapters = chaptersData.map(ch => ({
+    const chapters = validatedChapters.map(ch => ({
       videoId: videoId,
       chapterIndex: ch.chapterIndex,
       startTime: ch.startTime,

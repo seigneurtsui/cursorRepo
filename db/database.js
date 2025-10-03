@@ -8,6 +8,7 @@ const pool = new Pool({
   database: process.env.DATABASE_NAME || 'video_chapters',
   user: process.env.DATABASE_USER || 'postgres',
   password: process.env.DATABASE_PASSWORD || '',
+  client_encoding: 'UTF8',  // 确保使用 UTF-8 编码
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

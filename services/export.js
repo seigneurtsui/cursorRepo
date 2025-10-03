@@ -22,6 +22,34 @@ class ExportService {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   }
 
+  // Generate video title from filename
+  generateVideoTitle(filename) {
+    // Remove file extension
+    const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+    // Replace underscores and hyphens with spaces
+    const title = nameWithoutExt.replace(/[_-]/g, ' ');
+    return title;
+  }
+
+  // Format chapters list for export
+  formatChaptersList(videoChapters) {
+    if (!videoChapters || videoChapters.length === 0) {
+      return '暂无章节';
+    }
+
+    let list = '### 章节列表\n\n';
+    videoChapters.forEach((ch, idx) => {
+      list += `${ch.chapter_index}. **[${this.formatTime(ch.start_time)} - ${this.formatTime(ch.end_time)}]** ${ch.title}\n`;
+      if (ch.description) {
+        list += `   > ${ch.description}\n`;
+      }
+      if (idx < videoChapters.length - 1) {
+        list += '\n';
+      }
+    });
+    return list;
+  }
+
   // Export to Excel
   async exportToExcel(videos, chapters) {
     const workbook = new ExcelJS.Workbook();
@@ -31,17 +59,19 @@ class ExportService {
     videoSheet.columns = [
       { header: 'ID', key: 'id', width: 10 },
       { header: '文件名', key: 'original_name', width: 40 },
+      { header: '视频标题', key: 'video_title', width: 40 },
       { header: '文件大小', key: 'file_size', width: 15 },
       { header: '视频时长', key: 'duration', width: 15 },
       { header: '状态', key: 'status', width: 15 },
       { header: '章节数', key: 'chapter_count', width: 10 },
       { header: '上传时间', key: 'created_at', width: 20 },
-      { header: '处理时间', key: 'processing_time', width: 15 }
+      { header: '处理时间', key: 'processing_time', width: 15 },
+      { header: '章节列表', key: 'chapters_list', width: 80 }
     ];
 
     // Add video data
     videos.forEach(video => {
-      const videoChapters = chapters.filter(ch => ch.video_id === video.id);
+      const videoChapters = chapters.filter(ch => ch.video_id === video.id).sort((a, b) => a.chapter_index - b.chapter_index);
       const processingTime = video.processing_started_at && video.processing_completed_at
         ? Math.round((new Date(video.processing_completed_at) - new Date(video.processing_started_at)) / 1000)
         : 0;
@@ -49,12 +79,14 @@ class ExportService {
       videoSheet.addRow({
         id: video.id,
         original_name: video.original_name,
+        video_title: this.generateVideoTitle(video.original_name),
         file_size: this.formatFileSize(video.file_size),
         duration: this.formatTime(video.duration),
         status: video.status,
         chapter_count: videoChapters.length,
         created_at: video.created_at ? new Date(video.created_at).toLocaleString('zh-CN') : '',
-        processing_time: processingTime > 0 ? `${processingTime}秒` : 'N/A'
+        processing_time: processingTime > 0 ? `${processingTime}秒` : 'N/A',
+        chapters_list: this.formatChaptersList(videoChapters)
       });
     });
 
@@ -103,7 +135,7 @@ class ExportService {
 
     if (type === 'videos') {
       data = videos.map(video => {
-        const videoChapters = chapters.filter(ch => ch.video_id === video.id);
+        const videoChapters = chapters.filter(ch => ch.video_id === video.id).sort((a, b) => a.chapter_index - b.chapter_index);
         const processingTime = video.processing_started_at && video.processing_completed_at
           ? Math.round((new Date(video.processing_completed_at) - new Date(video.processing_started_at)) / 1000)
           : 0;
@@ -111,16 +143,18 @@ class ExportService {
         return {
           id: video.id,
           文件名: video.original_name,
+          视频标题: this.generateVideoTitle(video.original_name),
           文件大小: this.formatFileSize(video.file_size),
           视频时长: this.formatTime(video.duration),
           状态: video.status,
           章节数: videoChapters.length,
           上传时间: video.created_at ? new Date(video.created_at).toLocaleString('zh-CN') : '',
-          处理时间: processingTime > 0 ? `${processingTime}秒` : 'N/A'
+          处理时间: processingTime > 0 ? `${processingTime}秒` : 'N/A',
+          章节列表: this.formatChaptersList(videoChapters)
         };
       });
 
-      fields = ['id', '文件名', '文件大小', '视频时长', '状态', '章节数', '上传时间', '处理时间'];
+      fields = ['id', '文件名', '视频标题', '文件大小', '视频时长', '状态', '章节数', '上传时间', '处理时间', '章节列表'];
     } else {
       data = chapters.map(chapter => {
         const video = videos.find(v => v.id === chapter.video_id);
@@ -138,7 +172,10 @@ class ExportService {
       fields = ['视频ID', '视频名称', '章节序号', '开始时间', '结束时间', '章节标题', '章节描述'];
     }
 
-    const parser = new Parser({ fields });
+    const parser = new Parser({ 
+      fields,
+      withBOM: true  // 添加 BOM 以支持 Excel 正确显示中文
+    });
     return parser.parse(data);
   }
 

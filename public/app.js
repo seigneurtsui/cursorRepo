@@ -16,10 +16,53 @@ let totalVideosToProcess = 0;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  checkAuth();
   initializeEventListeners();
   initializeWebSocket();
   loadVideos();
 });
+
+// Check authentication
+async function checkAuth() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '/public/login.html';
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Update balance display
+      const balanceElement = document.getElementById('userBalance');
+      if (balanceElement) {
+        balanceElement.textContent = `¥${result.user.balance.toFixed(2)}`;
+      }
+      
+      // Store user info
+      localStorage.setItem('user', JSON.stringify(result.user));
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/public/login.html';
+    }
+  } catch (error) {
+    console.error('认证检查失败:', error);
+    window.location.href = '/public/login.html';
+  }
+}
+
+// Logout function
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '/public/login.html';
+}
 
 // Initialize event listeners
 function initializeEventListeners() {
@@ -178,8 +221,12 @@ async function uploadFiles() {
   try {
     showToast(`正在上传 ${selectedFiles.length} 个文件...`, 'info');
 
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE}/api/upload`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       body: formData
     });
 
@@ -215,18 +262,32 @@ async function processVideos(videoIds) {
       updateVideoStatus(videoId, 'processing', '正在处理中...');
     });
 
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE}/api/process`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ videoIds })
     });
 
     const result = await response.json();
 
+    if (response.status === 402) {
+      // Balance insufficient
+      showToast(`余额不足！需要 ¥${result.required}，当前余额 ¥${result.balance}。请充值后再试。`, 'error');
+      if (confirm('余额不足，是否前往充值？')) {
+        window.location.href = '/public/profile.html';
+      }
+      loadVideos();
+      return;
+    }
+
     if (result.success) {
-      showToast(result.message, 'success');
+      showToast(result.message + (result.totalCost > 0 ? ` (将扣费 ¥${result.totalCost})` : ''), 'success');
+      // Refresh balance after processing starts
+      setTimeout(() => checkAuth(), 2000);
     } else {
       showToast('处理失败: ' + result.error, 'error');
       // Reload videos to get correct status on error

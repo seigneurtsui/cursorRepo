@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注册 - 视频章节生成器</title>
+  <link rel="stylesheet" href="/public/styles.css">
+  <style>
+    .auth-container {
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 40px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .auth-container h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .auth-container h2 {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 20px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: #555;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .form-group label .required {
+      color: #dc3545;
+      margin-left: 4px;
+    }
+    .form-group label .optional {
+      color: #999;
+      font-weight: normal;
+      font-size: 12px;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .verification-group {
+      display: flex;
+      gap: 10px;
+    }
+    .verification-group input {
+      flex: 1;
+    }
+    .btn-send-code {
+      padding: 10px 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+    .btn-send-code:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-submit:hover {
+      background: #0056b3;
+    }
+    .auth-footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #666;
+    }
+    .auth-footer a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 24px;
+      background: #28a745;
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      animation: slideIn 0.3s;
+    }
+    .toast.error { background: #dc3545; }
+    .toast.warning { background: #ffc107; color: #333; }
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h1>🎬 视频章节生成器</h1>
+    <h2>会员注册</h2>
+    
+    <form id="registerForm">
+      <!-- 必填字段 -->
+      <div class="form-group">
+        <label for="email">邮箱地址 <span class="required">*</span></label>
+        <input type="email" id="email" name="email" placeholder="请输入邮箱" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="verificationCode">验证码 <span class="required">*</span></label>
+        <div class="verification-group">
+          <input type="text" id="verificationCode" name="verificationCode" placeholder="请输入验证码" required>
+          <button type="button" class="btn-send-code" id="sendCodeBtn" onclick="sendVerificationCode()">
+            发送验证码
+          </button>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="username">用户名 <span class="required">*</span></label>
+        <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">密码 <span class="required">*</span></label>
+        <input type="password" id="password" name="password" placeholder="请输入密码（至少8位）" required minlength="8">
+      </div>
+      
+      <!-- 可选字段 -->
+      <div class="form-group">
+        <label for="phone">手机号 <span class="optional">(可选)</span></label>
+        <input type="tel" id="phone" name="phone" placeholder="请输入手机号">
+      </div>
+      
+      <div class="form-group">
+        <label for="wechat">微信号 <span class="optional">(可选)</span></label>
+        <input type="text" id="wechat" name="wechat" placeholder="请输入微信号">
+      </div>
+      
+      <div class="form-group">
+        <label for="other_contact">其他联系方式 <span class="optional">(可选)</span></label>
+        <input type="text" id="other_contact" name="other_contact" placeholder="QQ、Telegram等">
+      </div>
+      
+      <div class="form-group">
+        <label for="notes">备注 <span class="optional">(可选)</span></label>
+        <textarea id="notes" name="notes" placeholder="备注信息"></textarea>
+      </div>
+      
+      <button type="submit" class="btn-submit">注册</button>
+    </form>
+    
+    <div class="auth-footer">
+      已有账号？<a href="/public/login.html">立即登录</a>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let countdown = 0;
+    let countdownTimer = null;
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    async function sendVerificationCode() {
+      const email = document.getElementById('email').value;
+      
+      if (!email) {
+        showToast('请先输入邮箱地址', 'warning');
+        return;
+      }
+      
+      const btn = document.getElementById('sendCodeBtn');
+      btn.disabled = true;
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('验证码已发送到您的邮箱，请查收', 'success');
+          
+          // Start countdown
+          countdown = 60;
+          updateCountdown();
+          countdownTimer = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+              clearInterval(countdownTimer);
+              btn.disabled = false;
+              btn.textContent = '发送验证码';
+            } else {
+              updateCountdown();
+            }
+          }, 1000);
+        } else {
+          showToast(result.error || '发送失败', 'error');
+          btn.disabled = false;
+        }
+      } catch (error) {
+        console.error('发送验证码错误:', error);
+        showToast('发送失败，请稍后重试', 'error');
+        btn.disabled = false;
+      }
+    }
+
+    function updateCountdown() {
+      const btn = document.getElementById('sendCodeBtn');
+      btn.textContent = `${countdown}秒后重试`;
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = {
+        email: document.getElementById('email').value,
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        verificationCode: document.getElementById('verificationCode').value,
+        phone: document.getElementById('phone').value,
+        wechat: document.getElementById('wechat').value,
+        other_contact: document.getElementById('other_contact').value,
+        notes: document.getElementById('notes').value
+      };
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('注册成功！即将跳转到登录页面...', 'success');
+          setTimeout(() => {
+            window.location.href = '/public/login.html';
+          }, 2000);
+        } else {
+          showToast(result.error || '注册失败', 'error');
+        }
+      } catch (error) {
+        console.error('注册错误:', error);
+        showToast('注册失败，请稍后重试', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会员中心 - 视频章节生成器</title>
+  <link rel="stylesheet" href="/public/styles.css">
+  <style>
+    .profile-container { max-width: 900px; margin: 20px auto; padding: 20px; }
+    .profile-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 20px; }
+    .balance-display { font-size: 48px; font-weight: bold; margin: 10px 0; }
+    .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .card h3 { margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+    .plan-card { border: 2px solid #ddd; padding: 20px; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+    .plan-card:hover { border-color: #007bff; transform: translateY(-2px); }
+    .plan-card.selected { border-color: #007bff; background: #f0f8ff; }
+    .plan-price { font-size: 32px; font-weight: bold; color: #007bff; margin: 10px 0; }
+    .payment-methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+    .payment-btn { padding: 12px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; transition: all 0.3s; text-align: center; }
+    .payment-btn:hover { border-color: #28a745; }
+    .payment-btn.selected { border-color: #28a745; background: #f0fff0; }
+    .btn-primary { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    .btn-primary:hover { background: #0056b3; }
+    .info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .nav-buttons { text-align: right; margin-bottom: 15px; }
+    .nav-buttons button { margin-left: 10px; padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="profile-container">
+    <div class="nav-buttons">
+      <button onclick="window.location.href='/'">🎬 返回主页</button>
+      <button onclick="logout()">🚪 退出登录</button>
+    </div>
+
+    <div class="profile-header">
+      <h2>👤 会员中心</h2>
+      <div id="userInfo">
+        <div style="font-size: 20px; margin-bottom: 10px;">欢迎，<span id="username">加载中...</span></div>
+        <div style="font-size: 14px; opacity: 0.9;">账号：<span id="email">加载中...</span></div>
+      </div>
+      <div class="balance-display">
+        ¥ <span id="balance">0.00</span>
+      </div>
+      <div style="font-size: 14px; opacity: 0.9;">当前余额</div>
+    </div>
+
+    <!-- 充值套餐 -->
+    <div class="card">
+      <h3>💰 充值套餐</h3>
+      <div class="plan-grid" id="plansContainer">
+        <div class="plan-card" onclick="selectPlan(1)">
+          <div style="font-size: 18px; font-weight: 600;">按次付费</div>
+          <div class="plan-price">¥5</div>
+          <div style="color: #666; font-size: 14px;">单次视频处理</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan(2)">
+          <div style="font-size: 18px; font-weight: 600;">月度套餐</div>
+          <div class="plan-price">¥50</div>
+          <div style="color: #666; font-size: 14px;">月度无限次使用</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan(3)">
+          <div style="font-size: 18px; font-weight: 600; color: #ff6b6b;">年度套餐 🔥</div>
+          <div class="plan-price">¥300</div>
+          <div style="color: #666; font-size: 14px;">年度无限次使用</div>
+        </div>
+      </div>
+
+      <h4 style="margin-top: 25px; margin-bottom: 10px;">选择支付方式</h4>
+      <div class="payment-methods">
+        <div class="payment-btn" onclick="selectPayment('alipay')">
+          <div style="font-size: 24px;">💳</div>
+          <div style="font-size: 14px;">支付宝</div>
+        </div>
+        <div class="payment-btn" onclick="selectPayment('wechat')">
+          <div style="font-size: 24px;">💚</div>
+          <div style="font-size: 14px;">微信支付</div>
+        </div>
+        <div class="payment-btn" onclick="selectPayment('stripe')">
+          <div style="font-size: 24px;">💳</div>
+          <div style="font-size: 14px;">Stripe</div>
+        </div>
+        <div class="payment-btn" onclick="selectPayment('paypal')">
+          <div style="font-size: 24px;">💙</div>
+          <div style="font-size: 14px;">PayPal</div>
+        </div>
+        <div class="payment-btn" onclick="selectPayment('visa')">
+          <div style="font-size: 24px;">💳</div>
+          <div style="font-size: 14px;">Visa</div>
+        </div>
+        <div class="payment-btn" onclick="selectPayment('mastercard')">
+          <div style="font-size: 24px;">💳</div>
+          <div style="font-size: 14px;">MasterCard</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="recharge()" style="width: 100%; margin-top: 20px; font-size: 18px;">
+        💰 立即充值（演示版-自动到账）
+      </button>
+      <div style="margin-top: 10px; color: #999; font-size: 12px; text-align: center;">
+        ⚠️ 当前为演示版本，点击充值将模拟支付并立即到账
+      </div>
+    </div>
+
+    <!-- 交易记录 -->
+    <div class="card">
+      <h3>📊 最近交易记录</h3>
+      <div id="transactionsContainer">加载中...</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let selectedPlanId = null;
+    let selectedPaymentMethod = null;
+    let currentUser = null;
+
+    async function loadProfile() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/public/login.html';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          currentUser = result.user;
+          document.getElementById('username').textContent = currentUser.username;
+          document.getElementById('email').textContent = currentUser.email;
+          document.getElementById('balance').textContent = currentUser.balance.toFixed(2);
+          
+          loadTransactions();
+        } else {
+          window.location.href = '/public/login.html';
+        }
+      } catch (error) {
+        console.error('加载用户信息失败:', error);
+        window.location.href = '/public/login.html';
+      }
+    }
+
+    async function loadTransactions() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/transactions?limit=10`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success && result.transactions.length > 0) {
+          const html = result.transactions.map(t => `
+            <div class="info-item">
+              <div>
+                <strong>${t.type === 'recharge' ? '💰 充值' : '📝 消费'}</strong>
+                <span style="margin-left: 10px;">${t.description}</span>
+              </div>
+              <div>
+                <span style="color: ${t.type === 'recharge' ? '#28a745' : '#dc3545'}; font-weight: 600;">
+                  ${t.type === 'recharge' ? '+' : ''}¥${Math.abs(t.amount).toFixed(2)}
+                </span>
+                <span style="margin-left: 10px; color: #999; font-size: 12px;">
+                  ${new Date(t.created_at).toLocaleString('zh-CN')}
+                </span>
+              </div>
+            </div>
+          `).join('');
+          document.getElementById('transactionsContainer').innerHTML = html;
+        } else {
+          document.getElementById('transactionsContainer').innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">暂无交易记录</div>';
+        }
+      } catch (error) {
+        console.error('加载交易记录失败:', error);
+      }
+    }
+
+    function selectPlan(planId) {
+      selectedPlanId = planId;
+      document.querySelectorAll('.plan-card').forEach((card, index) => {
+        card.classList.toggle('selected', index + 1 === planId);
+      });
+    }
+
+    function selectPayment(method) {
+      selectedPaymentMethod = method;
+      document.querySelectorAll('.payment-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      event.target.closest('.payment-btn').classList.add('selected');
+    }
+
+    async function recharge() {
+      if (!selectedPlanId) {
+        alert('请选择充值套餐');
+        return;
+      }
+      if (!selectedPaymentMethod) {
+        alert('请选择支付方式');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/recharge`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            planId: selectedPlanId,
+            paymentMethod: selectedPaymentMethod
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`充值成功！\n新余额: ¥${result.newBalance.toFixed(2)}`);
+          loadProfile();
+        } else {
+          alert('充值失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('充值错误:', error);
+        alert('充值失败，请稍后重试');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/public/login.html';
+    }
+
+    // Load profile on page load
+    loadProfile();
+  </script>
+</body>
+</html>

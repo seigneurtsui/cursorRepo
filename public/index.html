@@ -16,6 +16,10 @@
       </div>
       <div class="header-stats" id="headerStats">
         <div class="stat-item">
+          <span class="stat-label">账户余额</span>
+          <span class="stat-value" id="userBalance" style="color: #28a745;">¥0.00</span>
+        </div>
+        <div class="stat-item">
           <span class="stat-label">总视频</span>
           <span class="stat-value" id="totalVideos">0</span>
         </div>
@@ -26,6 +30,14 @@
         <div class="stat-item">
           <span class="stat-label">处理中</span>
           <span class="stat-value processing" id="processingCount">0</span>
+        </div>
+        <div class="stat-item">
+          <button onclick="window.location.href='/public/profile.html'" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            👤 会员中心
+          </button>
+          <button onclick="logout()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 10px;">
+            🚪 退出
+          </button>
         </div>
       </div>
     </header>
@@ -194,6 +206,7 @@
   <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
+  <script src="/public/auth-helper.js"></script>
   <script src="/public/app.js"></script>
 </body>
 </html>

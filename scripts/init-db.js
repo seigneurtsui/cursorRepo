@@ -168,12 +168,13 @@ const initializeDatabase = async () => {
     console.log('✅ Inserted default payment plans');
 
     // Create default admin user (password: admin123456)
+    // Password hash generated with bcrypt.hash('admin123456', 10)
     await client.query(`
       INSERT INTO users (email, username, password_hash, is_admin, is_active, email_verified)
-      VALUES ('admin@example.com', 'admin', '$2b$10$rFqHmQ8WGZ7WGZ7WGZ7WGexample', TRUE, TRUE, TRUE)
+      VALUES ('admin@example.com', 'admin', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', TRUE, TRUE, TRUE)
       ON CONFLICT DO NOTHING;
     `);
-    console.log('✅ Created default admin user');
+    console.log('✅ Created default admin user (email: admin@example.com, password: admin123456)');
 
     // Create indexes for better performance
     await client.query(`

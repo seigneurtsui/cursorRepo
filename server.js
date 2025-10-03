@@ -45,8 +45,14 @@ async function ensureDirectories() {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/exports', express.static(path.join(__dirname, 'exports')));
+
+// Authentication routes
+const authRoutes = require('./routes/auth-routes');
+app.use('/api/auth', authRoutes);
 
 // Multer configuration for file upload
 const storage = multer.diskStorage({
@@ -370,8 +376,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
-// Upload videos
-app.post('/api/upload', upload.array('videos', 50), async (req, res) => {
+// Upload videos (require authentication)
+const { authenticate, checkBalance } = require('./middleware/auth');
+app.post('/api/upload', authenticate, upload.array('videos', 50), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: '没有上传文件' });
@@ -420,11 +427,25 @@ app.post('/api/process', async (req, res) => {
       return res.status(400).json({ error: '请提供视频ID列表' });
     }
 
+    // Check balance (skip for admin)
+    const totalCost = videoIds.length * PROCESSING_COST;
+    const userBalance = parseFloat(req.user.balance);
+    
+    if (!req.user.is_admin && userBalance < totalCost) {
+      return res.status(402).json({ 
+        error: '余额不足，请充值',
+        balance: userBalance,
+        required: totalCost,
+        perVideo: PROCESSING_COST
+      });
+    }
+
     // Start processing asynchronously
     res.json({
       success: true,
       message: `开始处理 ${videoIds.length} 个视频`,
-      videoIds
+      videoIds,
+      totalCost: req.user.is_admin ? 0 : totalCost
     });
 
     // Process videos in background
@@ -435,6 +456,22 @@ app.post('/api/process', async (req, res) => {
     for (let i = 0; i < videoIds.length; i++) {
       const videoId = videoIds[i];
       const videoIndex = i + 1;
+      
+      // Deduct balance for each video (skip for admin)
+      if (!req.user.is_admin) {
+        try {
+          await paymentService.deductBalance(
+            req.user.id, 
+            PROCESSING_COST, 
+            `视频处理 - ${videoId}`,
+            videoId
+          );
+          console.log(`💰 Deducted ¥${PROCESSING_COST} from user ${req.user.id} for video ${videoId}`);
+        } catch (balanceError) {
+          console.error(`❌ Failed to deduct balance for video ${videoId}:`, balanceError);
+          // Continue processing but log the error
+        }
+      }
       
       const result = await processVideoFile(videoId, videoIndex, totalVideos);
       const video = await db.videos.findById(videoId);
@@ -716,4 +753,111 @@ app.get('/api/export-custom-excel/:id', async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
 
-  } catch (
+  } catch (    console.error('❌ Export custom Excel error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Batch export custom Excel (merged into one file)
+app.post('/api/batch-export-custom-excel', async (req, res) => {
+  try {
+    const { videoIds } = req.body;
+    
+    if (!videoIds || videoIds.length === 0) {
+      return res.status(400).json({ error: '请选择要导出的视频' });
+    }
+
+    // Generate custom Excel with all videos
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('批量视频数据');
+
+    // Set columns
+    sheet.columns = [
+      { header: 'title', key: 'title', width: 50 },
+      { header: 'description', key: 'description', width: 80 },
+      { header: 'filename', key: 'filename', width: 60 }
+    ];
+
+    // Style header
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, size: 12 };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    // Process each video
+    for (const videoId of videoIds) {
+      const video = await db.videos.findById(videoId);
+      if (!video) continue;
+
+      const chapters = await db.chapters.findByVideoId(videoId);
+
+      // Generate video title
+      const videoTitle = video.original_name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+      
+      // Format chapters list
+      let description = '';
+      if (chapters && chapters.length > 0) {
+        chapters.sort((a, b) => a.chapter_index - b.chapter_index);
+        chapters.forEach((ch) => {
+          const startTime = exportService.formatTime(ch.start_time);
+          const endTime = exportService.formatTime(ch.end_time);
+          description += `${ch.chapter_index}. [${startTime} - ${endTime}] ${ch.title}\n`;
+          if (ch.description) {
+            description += `   ${ch.description}\n`;
+          }
+          description += '\n';
+        });
+      }
+
+      // Generate filename with absolute path
+      const filename = '/Users/seigneur/lavoro/video-chapters/' + video.file_path;
+
+      // Add data row
+      sheet.addRow({
+        title: videoTitle,
+        description: description.trim(),
+        filename: filename
+      });
+    }
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=custom_export_batch_${Date.now()}.xlsx`);
+    
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('❌ Batch export custom Excel error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Serve frontend
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start server
+ensureDirectories().then(() => {
+  server.listen(PORT, () => {
+    console.log(`
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║   🎬 视频章节生成器 - Video Chapter Generator                  ║
+║                                                               ║
+║   🚀 Server: http://localhost:${PORT}                          ║
+║   📊 Database: PostgreSQL                                     ║
+║   🤖 AI: Whisper + Ollama                                     ║
+║   📢 Notifications: 4 channels ready                          ║
+║   🔐 Auth: JWT enabled                                        ║
+║   💰 Payment: Mock mode (demo)                                ║
+║                                                               ║
+║   登录页面: http://localhost:${PORT}/public/login.html         ║
+║   注册页面: http://localhost:${PORT}/public/register.html      ║
+║   管理后台: http://localhost:${PORT}/public/admin.html         ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+    `);
+  });
+});

@@ -695,6 +695,9 @@ async function viewTranscript(videoId) {
             </div>
           </div>
           <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="toggleTranscriptView(${videoId})" style="padding: 8px 16px;">
+              📄 纯文本
+            </button>
             <button class="btn btn-secondary" onclick="copyTranscriptToClipboard(${videoId})" style="padding: 8px 16px;">
               📋 复制字幕
             </button>
@@ -703,7 +706,7 @@ async function viewTranscript(videoId) {
             </button>
           </div>
         </div>
-        <div style="max-height: 500px; overflow-y: auto; padding: 20px; background: #f5f5f5; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 14px; line-height: 1.8;">
+        <div id="transcriptContent" style="max-height: 500px; overflow-y: auto; padding: 20px; background: #f5f5f5; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 14px; line-height: 1.8;" data-mode="srt" data-video-id="${videoId}">
           ${transcript}
         </div>
       `;
@@ -715,6 +718,65 @@ async function viewTranscript(videoId) {
     console.error('View transcript error:', error);
     showToast('加载字幕失败: ' + error.message, 'error');
   }
+}
+
+// Toggle transcript view between SRT and plain text
+async function toggleTranscriptView(videoId) {
+  try {
+    const contentDiv = document.getElementById('transcriptContent');
+    const currentMode = contentDiv.dataset.mode;
+    const button = event.target;
+    
+    const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      const video = result.data;
+      const transcript = video.transcript || '暂无字幕';
+      
+      if (currentMode === 'srt') {
+        // Switch to plain text mode
+        const plainText = parseSRTToPlainText(transcript);
+        contentDiv.innerHTML = plainText;
+        contentDiv.dataset.mode = 'plain';
+        button.innerHTML = '📋 SRT格式';
+      } else {
+        // Switch back to SRT mode
+        contentDiv.innerHTML = transcript;
+        contentDiv.dataset.mode = 'srt';
+        button.innerHTML = '📄 纯文本';
+      }
+    }
+  } catch (error) {
+    console.error('Toggle transcript view error:', error);
+    showToast('切换显示模式失败: ' + error.message, 'error');
+  }
+}
+
+// Parse SRT to plain text (remove timestamps and indices)
+function parseSRTToPlainText(srtContent) {
+  if (!srtContent) return '';
+  
+  const lines = srtContent.trim().split('\n');
+  const textLines = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines
+    if (!line) continue;
+    
+    // Skip index lines (pure numbers)
+    if (/^\d+$/.test(line)) continue;
+    
+    // Skip timestamp lines
+    if (line.includes('-->')) continue;
+    
+    // This is actual subtitle text
+    textLines.push(line);
+  }
+  
+  return textLines.join('\n\n');
 }
 
 // Copy transcript to clipboard

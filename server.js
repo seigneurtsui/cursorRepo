@@ -158,12 +158,12 @@ async function processVideoFile(videoId) {
       format: 'srt'
     });
 
-    // Save full transcript to database
-    const fullTranscript = transcript.fullText || '';
+    // Save SRT format transcript to database
+    const srtTranscript = transcript.raw || '';
     await db.videos.update(videoId, { 
-      transcript: fullTranscript 
+      transcript: srtTranscript 
     });
-    console.log(`💾 Saved transcript to database (${fullTranscript.length} characters)`);
+    console.log(`💾 Saved SRT transcript to database (${srtTranscript.length} characters)`);
 
     broadcastProgress({
       type: 'progress',

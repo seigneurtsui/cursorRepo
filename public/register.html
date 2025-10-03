@@ -136,6 +136,17 @@
         <label for="email">邮箱地址 <span class="required">*</span></label>
         <input type="email" id="email" name="email" placeholder="请输入邮箱" required>
       </div>
+
+      <div class="form-group">
+        <label for="captcha">图形验证码 <span class="required">*</span></label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="captcha" name="captcha" placeholder="请输入图形验证码" required style="flex: 1;">
+          <div id="captchaContainer" style="cursor: pointer; border: 1px solid #ddd; border-radius: 6px; padding: 5px; background: #f8f9fa;" onclick="refreshCaptcha()" title="点击刷新">
+            <div style="text-align: center; color: #999; font-size: 12px;">加载中...</div>
+          </div>
+        </div>
+        <div style="color: #999; font-size: 12px; margin-top: 5px;">点击图片可刷新验证码</div>
+      </div>
       
       <div class="form-group">
         <label for="verificationCode">验证码 <span class="required">*</span></label>
@@ -190,6 +201,35 @@
     const API_BASE = window.location.origin;
     let countdown = 0;
     let countdownTimer = null;
+    let captchaSessionId = null;
+
+    // Load captcha on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadCaptcha();
+    });
+
+    // Load captcha
+    async function loadCaptcha() {
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/captcha`);
+        const result = await response.json();
+        
+        if (result.success) {
+          captchaSessionId = result.sessionId;
+          document.getElementById('captchaContainer').innerHTML = result.svg;
+        } else {
+          document.getElementById('captchaContainer').innerHTML = '<div style="color: red;">加载失败</div>';
+        }
+      } catch (error) {
+        console.error('加载验证码失败:', error);
+        document.getElementById('captchaContainer').innerHTML = '<div style="color: red;">加载失败</div>';
+      }
+    }
+
+    // Refresh captcha
+    function refreshCaptcha() {
+      loadCaptcha();
+    }
 
     function showToast(message, type = 'success') {
       const toast = document.createElement('div');
@@ -262,6 +302,8 @@
         username: document.getElementById('username').value,
         password: document.getElementById('password').value,
         verificationCode: document.getElementById('verificationCode').value,
+        captcha: document.getElementById('captcha').value,
+        captchaSessionId: captchaSessionId,
         phone: document.getElementById('phone').value,
         wechat: document.getElementById('wechat').value,
         other_contact: document.getElementById('other_contact').value,
@@ -292,6 +334,11 @@
             setTimeout(() => {
               showToast('💡 请重新获取验证码', 'warning');
             }, 2000);
+          }
+          
+          // 如果是图形验证码错误，自动刷新
+          if (errorMessage.includes('图形验证码')) {
+            refreshCaptcha();
           }
         }
       } catch (error) {

@@ -6,6 +6,46 @@ const paymentService = require('../services/payment');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const notificationService = require('../services/notification');
 const emailService = require('../services/email');
+const captchaService = require('../services/captcha');
+const { v4: uuidv4 } = require('uuid');
+
+// Generate captcha
+router.get('/captcha', async (req, res) => {
+  try {
+    const sessionId = req.query.sessionId || uuidv4();
+    const captcha = captchaService.generate(sessionId);
+    
+    res.json({
+      success: true,
+      svg: captcha.svg,
+      sessionId: captcha.sessionId
+    });
+  } catch (error) {
+    console.error('生成验证码错误:', error);
+    res.status(500).json({ error: '生成验证码失败' });
+  }
+});
+
+// Verify captcha (optional standalone verification)
+router.post('/verify-captcha', async (req, res) => {
+  try {
+    const { sessionId, captcha } = req.body;
+    
+    if (!sessionId || !captcha) {
+      return res.status(400).json({ error: '请提供验证码' });
+    }
+
+    const result = captchaService.verify(sessionId, captcha);
+    
+    res.json({
+      success: result.valid,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('验证码验证错误:', error);
+    res.status(500).json({ error: '验证失败' });
+  }
+});
 
 // Send verification code
 router.post('/send-code', async (req, res) => {
@@ -51,11 +91,21 @@ router.post('/send-code', async (req, res) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { email, username, password, verificationCode, phone, wechat, other_contact, notes, other_info } = req.body;
+    const { email, username, password, verificationCode, phone, wechat, other_contact, notes, other_info, captcha, captchaSessionId } = req.body;
 
     // Validate required fields
     if (!email || !username || !password || !verificationCode) {
       return res.status(400).json({ error: '请填写所有必填字段' });
+    }
+
+    // Validate captcha first
+    if (!captcha || !captchaSessionId) {
+      return res.status(400).json({ error: '请输入图形验证码' });
+    }
+
+    const captchaResult = captchaService.verify(captchaSessionId, captcha);
+    if (!captchaResult.valid) {
+      return res.status(400).json({ error: captchaResult.message });
     }
 
     if (password.length < 8) {
@@ -197,6 +247,51 @@ router.post('/change-password', authenticate, async (req, res) => {
   } catch (error) {
     console.error('修改密码错误:', error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Reset password (forgot password)
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, verificationCode, newPassword } = req.body;
+
+    if (!email || !verificationCode || !newPassword) {
+      return res.status(400).json({ error: '请填写所有字段' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: '新密码至少需要8位' });
+    }
+
+    // Verify code
+    const codeVerification = await authService.verifyCode(email, verificationCode);
+    if (!codeVerification.valid) {
+      return res.status(400).json({ error: codeVerification.message });
+    }
+
+    // Check if user exists
+    const db = require('../db/database');
+    const userResult = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: '该邮箱未注册' });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Hash new password
+    const bcrypt = require('bcryptjs');
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, userId]);
+
+    res.json({
+      success: true,
+      message: '密码重置成功'
+    });
+  } catch (error) {
+    console.error('重置密码错误:', error);
+    res.status(500).json({ error: '重置密码失败' });
   }
 });
 

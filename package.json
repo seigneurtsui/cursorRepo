@@ -39,6 +39,7 @@
     "pdfkit": "^0.13.0",
     "pg": "^8.11.3",
     "source-han-sans-cn": "^1.0.0",
+    "svg-captcha": "^1.4.0",
     "uuid": "^9.0.1",
     "whisper-node": "^1.0.0",
     "ws": "^8.16.0"

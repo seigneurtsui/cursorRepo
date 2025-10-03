@@ -420,6 +420,86 @@ router.get('/admin/users', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// Toggle user active status (admin only)
+router.put('/admin/users/:id/toggle-status', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { isActive } = req.body;
+
+    // Check if user is admin (cannot disable admin)
+    const checkQuery = 'SELECT is_admin FROM users WHERE id = $1';
+    const checkResult = await require('../db/database').query(checkQuery, [userId]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    if (checkResult.rows[0].is_admin) {
+      return res.status(403).json({ error: '无法修改管理员状态' });
+    }
+
+    const query = 'UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
+    const result = await require('../db/database').query(query, [isActive, userId]);
+
+    res.json({ success: true, user: result.rows[0] });
+  } catch (error) {
+    console.error('切换用户状态错误:', error);
+    res.status(500).json({ error: '切换用户状态失败' });
+  }
+});
+
+// Delete user (admin only)
+router.delete('/admin/users/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    // Check if user is admin (cannot delete admin)
+    const checkQuery = 'SELECT is_admin FROM users WHERE id = $1';
+    const checkResult = await require('../db/database').query(checkQuery, [userId]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    if (checkResult.rows[0].is_admin) {
+      return res.status(403).json({ error: '无法删除管理员账户' });
+    }
+
+    // Delete user (CASCADE will delete related videos, transactions, etc.)
+    const query = 'DELETE FROM users WHERE id = $1';
+    await require('../db/database').query(query, [userId]);
+
+    res.json({ success: true, message: '用户删除成功' });
+  } catch (error) {
+    console.error('删除用户错误:', error);
+    res.status(500).json({ error: '删除用户失败' });
+  }
+});
+
+// Adjust user balance (admin only)
+router.put('/admin/users/:id/adjust-balance', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { balance } = req.body;
+
+    if (typeof balance !== 'number' || balance < 0) {
+      return res.status(400).json({ error: '无效的余额值' });
+    }
+
+    const query = 'UPDATE users SET balance = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
+    const result = await require('../db/database').query(query, [balance, userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    res.json({ success: true, user: result.rows[0] });
+  } catch (error) {
+    console.error('调整余额错误:', error);
+    res.status(500).json({ error: '调整余额失败' });
+  }
+});
+
 // Get all transactions (admin only)
 router.get('/admin/transactions', authenticate, requireAdmin, async (req, res) => {
   try {

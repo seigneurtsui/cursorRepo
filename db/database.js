@@ -68,7 +68,15 @@ const db = {
     },
 
     findAll: async (filters = {}) => {
-      let query = 'SELECT DISTINCT v.* FROM videos v WHERE 1=1';
+      // Include user info for admin
+      let query = `
+        SELECT DISTINCT v.*, 
+               u.username, 
+               u.email as user_email
+        FROM videos v
+        LEFT JOIN users u ON v.user_id = u.id
+        WHERE 1=1
+      `;
       const params = [];
       let paramCount = 1;
 
@@ -89,11 +97,15 @@ const db = {
         // Search in videos table: filename, original_name, transcript
         // AND chapters table: title, description
         query = `
-          SELECT DISTINCT v.* 
+          SELECT DISTINCT v.*,
+                 u.username,
+                 u.email as user_email
           FROM videos v
+          LEFT JOIN users u ON v.user_id = u.id
           LEFT JOIN chapters c ON v.id = c.video_id
           WHERE 1=1
-          ${filters.status ? `AND v.status = $1` : ''}
+          ${filters.userId ? `AND v.user_id = $1` : ''}
+          ${filters.status ? `AND v.status = $${filters.userId ? 2 : 1}` : ''}
           AND (
             v.original_name ILIKE $${paramCount} OR 
             v.filename ILIKE $${paramCount} OR 

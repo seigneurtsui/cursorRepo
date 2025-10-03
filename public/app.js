@@ -428,12 +428,17 @@ function renderVideos(videos) {
                  onchange="toggleVideoSelection(${video.id}, this.checked)"
                  ${selectedVideoIds.has(video.id) ? 'checked' : ''}
                  style="transform: scale(1.3); cursor: pointer;">
-          <div>
+          <div style="flex: 1;">
             <div class="video-title">${video.original_name}</div>
             <div class="video-status ${video.status}">
               ${getStatusText(video.status)}
             </div>
           </div>
+          ${video.username ? `
+            <div style="font-size: 12px; color: #666; background: #f0f0f0; padding: 4px 10px; border-radius: 4px; white-space: nowrap;">
+              👤 ${video.username} ${video.user_email ? `<span style="color: #999;">(${video.user_email})</span>` : ''}
+            </div>
+          ` : ''}
         </div>
       </div>
       <div class="video-meta">
@@ -543,12 +548,17 @@ function applyFilters() {
   const status = document.getElementById('filterStatus').value;
   const startDate = document.getElementById('filterStartDate').value;
   const endDate = document.getElementById('filterEndDate').value;
+  
+  // Admin: user filter
+  const userFilter = document.getElementById('userFilter');
+  const userId = userFilter ? userFilter.value : '';
 
   currentFilters = {
     ...(keyword && { keyword }),
     ...(status && { status }),
     ...(startDate && { startDate }),
-    ...(endDate && { endDate })
+    ...(endDate && { endDate }),
+    ...(userId && { userId })
   };
 
   currentPage = 1;
@@ -561,9 +571,68 @@ function resetFilters() {
   document.getElementById('filterStatus').value = '';
   document.getElementById('filterStartDate').value = '';
   document.getElementById('filterEndDate').value = '';
+  
+  // Admin: reset user filter
+  const userFilter = document.getElementById('userFilter');
+  if (userFilter) {
+    userFilter.value = '';
+  }
+  
   currentFilters = {};
   currentPage = 1;
   loadVideos();
+}
+
+// Export all users' videos to Excel (admin only)
+async function exportAllVideos() {
+  if (!confirm('确定要导出全部会员的所有视频信息吗？')) return;
+
+  try {
+    showToast('正在生成Excel文件...', 'info');
+    const token = localStorage.getItem('token');
+    
+    // Get all videos (admin sees all)
+    const response = await fetch(`${API_BASE}/api/videos?limit=ALL`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success && result.data.length > 0) {
+      const videoIds = result.data.map(v => v.id);
+      
+      // Export via existing export API
+      const exportResponse = await fetch(`${API_BASE}/api/export`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          format: 'excel',
+          videoIds: videoIds
+        })
+      });
+      
+      if (exportResponse.ok) {
+        const blob = await exportResponse.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `all_users_videos_${Date.now()}.xlsx`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast('✅ 导出成功！', 'success');
+      } else {
+        throw new Error('导出失败');
+      }
+    } else {
+      showToast('没有可导出的视频数据', 'warning');
+    }
+  } catch (error) {
+    console.error('Export all videos error:', error);
+    showToast('导出失败: ' + error.message, 'error');
+  }
 }
 
 // View chapters

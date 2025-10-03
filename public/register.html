@@ -277,13 +277,22 @@
         
         const result = await response.json();
         
-        if (result.success) {
-          showToast('注册成功！即将跳转到登录页面...', 'success');
+        if (response.ok && result.success) {
+          showToast('✅ 注册成功！即将跳转到登录页面...', 'success');
           setTimeout(() => {
             window.location.href = '/public/login.html';
           }, 2000);
         } else {
-          showToast(result.error || '注册失败', 'error');
+          // 详细的错误提示
+          const errorMessage = result.error || '注册失败，请重试';
+          showToast('❌ ' + errorMessage, 'error');
+          
+          // 如果是验证码错误，提示重新获取
+          if (errorMessage.includes('验证码')) {
+            setTimeout(() => {
+              showToast('💡 请重新获取验证码', 'warning');
+            }, 2000);
+          }
         }
       } catch (error) {
         console.error('注册错误:', error);

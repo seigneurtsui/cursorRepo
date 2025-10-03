@@ -378,6 +378,9 @@ app.get('/api/health', (req, res) => {
 
 // Upload videos (require authentication)
 const { authenticate, checkBalance } = require('./middleware/auth');
+const paymentService = require('./services/payment');
+const PROCESSING_COST = parseFloat(process.env.PROCESSING_COST) || 5.00;
+
 app.post('/api/upload', authenticate, upload.array('videos', 50), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -418,8 +421,8 @@ app.post('/api/upload', authenticate, upload.array('videos', 50), async (req, re
   }
 });
 
-// Start processing videos
-app.post('/api/process', async (req, res) => {
+// Start processing videos (require authentication and balance check)
+app.post('/api/process', authenticate, async (req, res) => {
   try {
     const { videoIds } = req.body;
 

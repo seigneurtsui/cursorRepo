@@ -103,6 +103,26 @@
       </div>
     </div>
 
+    <!-- 修改密码 -->
+    <div class="card">
+      <h3>🔐 修改密码</h3>
+      <div style="max-width: 500px;">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">当前密码</label>
+          <input type="password" id="oldPassword" placeholder="请输入当前密码" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">新密码</label>
+          <input type="password" id="newPassword" placeholder="请输入新密码（至少8位）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">确认新密码</label>
+          <input type="password" id="confirmPassword" placeholder="请再次输入新密码" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        </div>
+        <button class="btn-primary" onclick="changePassword()">🔒 修改密码</button>
+      </div>
+    </div>
+
     <!-- 交易记录 -->
     <div class="card">
       <h3>📊 最近交易记录</h3>
@@ -230,6 +250,51 @@
       } catch (error) {
         console.error('充值错误:', error);
         alert('充值失败，请稍后重试');
+      }
+    }
+
+    async function changePassword() {
+      const oldPassword = document.getElementById('oldPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        alert('请填写所有密码字段');
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        alert('新密码至少需要8位');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ oldPassword, newPassword })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ 密码修改成功！请重新登录');
+          logout();
+        } else {
+          alert('❌ ' + result.error);
+        }
+      } catch (error) {
+        console.error('修改密码错误:', error);
+        alert('修改密码失败，请稍后重试');
       }
     }
 

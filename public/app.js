@@ -197,6 +197,11 @@ async function processVideos(videoIds) {
     showToast('开始处理视频...', 'info');
     document.getElementById('progressSection').style.display = 'block';
 
+    // Immediately update UI for all videos being processed
+    videoIds.forEach(videoId => {
+      updateVideoStatus(videoId, 'processing', '正在处理中...');
+    });
+
     const response = await fetch(`${API_BASE}/api/process`, {
       method: 'POST',
       headers: {
@@ -211,6 +216,8 @@ async function processVideos(videoIds) {
       showToast(result.message, 'success');
     } else {
       showToast('处理失败: ' + result.error, 'error');
+      // Reload videos to get correct status on error
+      loadVideos();
     }
   } catch (error) {
     console.error('Process error:', error);
@@ -253,8 +260,34 @@ function updateProgress(videoId, stage, progress, message) {
 
 // Update video status
 function updateVideoStatus(videoId, status, message) {
-  // This will be reflected when loadVideos() is called
   console.log(`Video ${videoId} status: ${status} - ${message}`);
+  
+  // Find the video card in the DOM
+  const videoCard = document.querySelector(`[data-video-id="${videoId}"]`);
+  if (!videoCard) {
+    console.log('Video card not found, will reload on completion');
+    return;
+  }
+  
+  // Update the status display
+  const statusElement = videoCard.querySelector('.video-status');
+  if (statusElement) {
+    statusElement.className = `video-status ${status}`;
+    statusElement.textContent = getStatusText(status);
+  }
+  
+  // Update the action buttons based on status
+  const actionsContainer = videoCard.querySelector('.video-actions');
+  if (actionsContainer && status === 'processing') {
+    // Find and update the process button
+    const processButton = actionsContainer.querySelector('.btn-process');
+    if (processButton) {
+      processButton.disabled = true;
+      processButton.style.opacity = '0.6';
+      processButton.style.cursor = 'not-allowed';
+      processButton.innerHTML = '⚙️ 处理中...';
+    }
+  }
 }
 
 // Load videos

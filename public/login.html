@@ -188,7 +188,7 @@
           
           // Redirect to main page or admin page
           setTimeout(() => {
-            if (result.user.isAdmin) {
+            if (result.user.is_admin) {
               window.location.href = '/public/admin.html';
             } else {
               window.location.href = '/';

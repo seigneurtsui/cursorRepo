@@ -153,7 +153,8 @@ class AuthService {
         email: user.email,
         username: user.username,
         balance: parseFloat(user.balance),
-        isAdmin: user.is_admin,
+        is_admin: user.is_admin,  // Use underscore for consistency
+        isAdmin: user.is_admin,   // Keep for backward compatibility
         phone: user.phone,
         wechat: user.wechat
       }

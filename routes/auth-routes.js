@@ -233,7 +233,8 @@ router.get('/me', authenticate, async (req, res) => {
         notes: user.notes,
         other_info: user.other_info,
         balance: parseFloat(user.balance),
-        isAdmin: user.is_admin,
+        is_admin: user.is_admin,  // Use underscore for consistency
+        isAdmin: user.is_admin,   // Keep for backward compatibility
         createdAt: user.created_at,
         lastLoginAt: user.last_login_at
       }

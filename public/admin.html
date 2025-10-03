@@ -155,7 +155,7 @@
         });
         const userResult = await userResponse.json();
         
-        if (!userResult.success || !userResult.user.isAdmin) {
+        if (!userResult.success || !userResult.user.is_admin) {
           alert('需要管理员权限');
           window.location.href = '/';
           return;

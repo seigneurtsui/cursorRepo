@@ -114,7 +114,7 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS payment_plans (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
-        type VARCHAR(50) NOT NULL,
+        type VARCHAR(50) NOT NULL UNIQUE,
         price NUMERIC(10, 2) NOT NULL,
         credits INTEGER,
         description TEXT,
@@ -164,9 +164,12 @@ const initializeDatabase = async () => {
         ('按次付费', 'per_use', 5.00, 1, '单次视频处理，5元/次'),
         ('月度套餐', 'monthly', 50.00, NULL, '月度无限次使用，50元/月'),
         ('年度套餐', 'yearly', 300.00, NULL, '年度无限次使用，300元/年')
-      ON CONFLICT DO NOTHING;
+      ON CONFLICT (type) DO UPDATE SET
+        name = EXCLUDED.name,
+        price = EXCLUDED.price,
+        description = EXCLUDED.description;
     `);
-    console.log('✅ Inserted default payment plans');
+    console.log('✅ Inserted/Updated default payment plans');
 
     // Create default admin user (password: admin123456)
     // Password hash generated with bcrypt.hash('admin123456', 10)

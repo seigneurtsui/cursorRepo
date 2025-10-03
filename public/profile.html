@@ -114,6 +114,45 @@
       </div>
     </div>
 
+    <!-- 会员等级 -->
+    <div class="card">
+      <h3>🏆 会员等级</h3>
+      <div id="membershipLevelContainer">加载中...</div>
+    </div>
+
+    <!-- 我的优惠券 -->
+    <div class="card">
+      <h3>🎫 我的优惠券</h3>
+      <div style="margin-bottom: 15px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="couponCode" placeholder="输入优惠券码" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+          <button class="btn-primary" onclick="claimCoupon()" style="white-space: nowrap;">🎁 领取优惠券</button>
+        </div>
+      </div>
+      <div id="couponsContainer">加载中...</div>
+    </div>
+
+    <!-- 推荐奖励 -->
+    <div class="card">
+      <h3>💝 推荐奖励</h3>
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
+        <div style="font-size: 16px; margin-bottom: 10px;">📢 我的推荐码</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div id="referralCode" style="flex: 1; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; font-size: 24px; font-weight: bold; letter-spacing: 2px; text-align: center;">
+            --------
+          </div>
+          <button onclick="copyReferralCode()" style="background: white; color: #667eea; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            📋 复制
+          </button>
+        </div>
+        <div style="margin-top: 10px; font-size: 14px; opacity: 0.9;">
+          分享您的推荐码，好友注册后您将获得奖励！
+        </div>
+      </div>
+      <div id="referralStatsContainer">加载中...</div>
+      <div id="referralListContainer" style="margin-top: 20px;"></div>
+    </div>
+
     <!-- 修改密码 -->
     <div class="card">
       <h3>🔐 修改密码</h3>
@@ -188,6 +227,15 @@
           
           // Load payment plans (always fetch latest prices)
           await loadPaymentPlans();
+          
+          // Load membership level
+          loadMembershipLevel();
+          
+          // Load coupons
+          loadCoupons();
+          
+          // Load referral code and stats
+          loadReferralInfo();
           
           loadTransactions();
         } else {
@@ -404,6 +452,253 @@
     }
 
     // Load profile on page load
+    loadProfile();
+  </script>
+</body>
+</html>
+
+    // ==================== Membership Level ====================
+    
+    async function loadMembershipLevel() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/membership/my-level`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          renderMembershipLevel(result.membership);
+        }
+      } catch (error) {
+        console.error('加载会员等级失败:', error);
+      }
+    }
+    
+    function renderMembershipLevel(membership) {
+      if (!membership) {
+        document.getElementById('membershipLevelContainer').innerHTML = '<div style="color: #999;">暂无等级信息</div>';
+        return;
+      }
+      
+      const html = `
+        <div style="background: linear-gradient(135deg, ${membership.badge_color || '#95a5a6'}20 0%, ${membership.badge_color || '#95a5a6'}40 100%); padding: 25px; border-radius: 12px; border-left: 5px solid ${membership.badge_color || '#95a5a6'};">
+          <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+            <div style="font-size: 48px;">${membership.badge_icon || '🌱'}</div>
+            <div>
+              <div style="font-size: 24px; font-weight: bold; color: ${membership.badge_color || '#95a5a6'};">
+                ${membership.name}
+              </div>
+              <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                ${membership.description}
+              </div>
+            </div>
+          </div>
+          
+          <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #999;">累计消费</div>
+                <div style="font-size: 20px; font-weight: bold; color: #667eea;">¥${parseFloat(membership.total_spending || 0).toFixed(2)}</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #999;">会员折扣</div>
+                <div style="font-size: 20px; font-weight: bold; color: #28a745;">${membership.discount_rate || 0}%</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #999;">推荐奖励</div>
+                <div style="font-size: 20px; font-weight: bold; color: #ffc107;">¥${parseFloat(membership.referral_bonus || 0).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('membershipLevelContainer').innerHTML = html;
+    }
+    
+    // ==================== Coupons ====================
+    
+    async function loadCoupons() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/membership/my-coupons`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          renderCoupons(result.coupons);
+        }
+      } catch (error) {
+        console.error('加载优惠券失败:', error);
+      }
+    }
+    
+    function renderCoupons(coupons) {
+      if (!coupons || coupons.length === 0) {
+        document.getElementById('couponsContainer').innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无优惠券</div>';
+        return;
+      }
+      
+      const html = coupons.map(coupon => {
+        const isExpired = new Date(coupon.valid_until) < new Date();
+        const isUsed = coupon.is_used;
+        const statusBadge = isUsed ? '已使用' : isExpired ? '已过期' : '可用';
+        const statusColor = isUsed ? '#999' : isExpired ? '#f39c12' : '#28a745';
+        
+        return `
+          <div style="background: ${isUsed || isExpired ? '#f5f5f5' : 'linear-gradient(135deg, #667eea20 0%, #764ba240 100%)'}; border: 2px dashed ${statusColor}; border-radius: 12px; padding: 15px; margin-bottom: 10px; position: relative; ${isUsed || isExpired ? 'opacity: 0.6;' : ''}">
+            <div style="position: absolute; top: 10px; right: 10px; background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${statusBadge}
+            </div>
+            <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">${coupon.name}</div>
+            <div style="font-size: 24px; font-weight: bold; color: #667eea; margin-bottom: 5px;">
+              ${coupon.type === 'percentage' ? coupon.discount_value + '折' : '¥' + parseFloat(coupon.discount_value).toFixed(2)}
+            </div>
+            <div style="font-size: 12px; color: #666;">
+              最低消费: ¥${parseFloat(coupon.min_purchase).toFixed(2)} | 
+              有效期至: ${new Date(coupon.valid_until).toLocaleDateString('zh-CN')}
+            </div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">
+              优惠码: ${coupon.code}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      document.getElementById('couponsContainer').innerHTML = html;
+    }
+    
+    async function claimCoupon() {
+      const code = document.getElementById('couponCode').value.trim();
+      if (!code) {
+        alert('请输入优惠券码');
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/membership/claim-coupon`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ code })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ 优惠券领取成功！');
+          document.getElementById('couponCode').value = '';
+          loadCoupons();
+        } else {
+          alert('❌ ' + (result.error || '领取失败'));
+        }
+      } catch (error) {
+        console.error('领取优惠券失败:', error);
+        alert('❌ 领取失败');
+      }
+    }
+    
+    // ==================== Referrals ====================
+    
+    async function loadReferralInfo() {
+      const token = localStorage.getItem('token');
+      try {
+        // Load referral code
+        const codeResponse = await fetch(`${API_BASE}/api/membership/my-referral-code`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const codeResult = await codeResponse.json();
+        
+        if (codeResult.success) {
+          document.getElementById('referralCode').textContent = codeResult.referralCode;
+        }
+        
+        // Load referrals and stats
+        const referralsResponse = await fetch(`${API_BASE}/api/membership/my-referrals`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const referralsResult = await referralsResponse.json();
+        
+        if (referralsResult.success) {
+          renderReferralStats(referralsResult.stats);
+          renderReferralList(referralsResult.referrals);
+        }
+      } catch (error) {
+        console.error('加载推荐信息失败:', error);
+      }
+    }
+    
+    function renderReferralStats(stats) {
+      const html = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; color: #999; margin-bottom: 5px;">推荐人数</div>
+            <div style="font-size: 24px; font-weight: bold; color: #667eea;">${stats.total_referrals || 0}</div>
+          </div>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; color: #999; margin-bottom: 5px;">已奖励</div>
+            <div style="font-size: 24px; font-weight: bold; color: #28a745;">${stats.rewarded_referrals || 0}</div>
+          </div>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; color: #999; margin-bottom: 5px;">累计奖励</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffc107;">¥${parseFloat(stats.total_rewards || 0).toFixed(2)}</div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('referralStatsContainer').innerHTML = html;
+    }
+    
+    function renderReferralList(referrals) {
+      if (!referrals || referrals.length === 0) {
+        document.getElementById('referralListContainer').innerHTML = '<div style="text-align: center; color: #999; padding: 20px; background: #f8f9fa; border-radius: 8px;">还没有推荐记录</div>';
+        return;
+      }
+      
+      const html = `
+        <h4 style="margin-bottom: 15px;">推荐记录</h4>
+        <div style="max-height: 300px; overflow-y: auto;">
+          ${referrals.map(ref => `
+            <div style="background: white; border: 1px solid #e0e0e0; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: 600;">👤 ${ref.referred_username}</div>
+                  <div style="font-size: 12px; color: #666;">注册时间: ${new Date(ref.referred_created_at).toLocaleDateString('zh-CN')}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-weight: bold; color: ${ref.reward_given ? '#28a745' : '#ffc107'};">
+                    ${ref.reward_given ? '✅ 已奖励' : '⏳ 待激活'}
+                  </div>
+                  <div style="font-size: 12px; color: #666;">¥${parseFloat(ref.reward_amount).toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      
+      document.getElementById('referralListContainer').innerHTML = html;
+    }
+    
+    function copyReferralCode() {
+      const code = document.getElementById('referralCode').textContent;
+      if (!code || code === '--------') {
+        alert('推荐码加载中，请稍候');
+        return;
+      }
+      
+      navigator.clipboard.writeText(code).then(() => {
+        alert('✅ 推荐码已复制到剪贴板！\n\n' + code + '\n\n分享给好友即可获得奖励');
+      }).catch(() => {
+        alert('复制失败，您的推荐码是：' + code);
+      });
+    }
+
     loadProfile();
   </script>
 </body>

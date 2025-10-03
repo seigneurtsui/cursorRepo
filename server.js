@@ -54,6 +54,10 @@ app.use('/exports', express.static(path.join(__dirname, 'exports')));
 const authRoutes = require('./routes/auth-routes');
 app.use('/api/auth', authRoutes);
 
+// Membership routes (coupons, referrals, levels)
+const membershipRoutes = require('./routes/membership-routes');
+app.use('/api/membership', membershipRoutes);
+
 // Multer configuration for file upload
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {

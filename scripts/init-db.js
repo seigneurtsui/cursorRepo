@@ -198,6 +198,118 @@ const initializeDatabase = async () => {
     `);
     console.log('✅ Created indexes');
 
+    // Create membership_levels table (会员等级)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS membership_levels (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) NOT NULL,
+        level INT NOT NULL UNIQUE,
+        min_spending NUMERIC(10, 2) DEFAULT 0.00,
+        discount_rate NUMERIC(5, 2) DEFAULT 0.00,
+        referral_bonus NUMERIC(10, 2) DEFAULT 0.00,
+        description TEXT,
+        badge_icon VARCHAR(50),
+        badge_color VARCHAR(20),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Created table: membership_levels');
+
+    // Create coupons table (优惠券)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        type VARCHAR(20) NOT NULL,
+        discount_value NUMERIC(10, 2) NOT NULL,
+        min_purchase NUMERIC(10, 2) DEFAULT 0.00,
+        max_uses INT DEFAULT 1,
+        used_count INT DEFAULT 0,
+        valid_from TIMESTAMP DEFAULT NOW(),
+        valid_until TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INT REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Created table: coupons');
+
+    // Create user_coupons table (用户优惠券)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_coupons (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        coupon_id INT NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+        is_used BOOLEAN DEFAULT FALSE,
+        used_at TIMESTAMP,
+        transaction_id INT REFERENCES transactions(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Created table: user_coupons');
+
+    // Create referrals table (推荐关系)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS referrals (
+        id SERIAL PRIMARY KEY,
+        referrer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        referred_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        referral_code VARCHAR(20) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        reward_amount NUMERIC(10, 2) DEFAULT 0.00,
+        reward_given BOOLEAN DEFAULT FALSE,
+        reward_given_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(referrer_id, referred_id)
+      );
+    `);
+    console.log('✅ Created table: referrals');
+
+    // Add membership level to users table
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS membership_level INT DEFAULT 1;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spending NUMERIC(10, 2) DEFAULT 0.00;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE;
+    `);
+    console.log('✅ Added membership columns to users table');
+
+    // Insert default membership levels
+    await client.query(`
+      INSERT INTO membership_levels (name, level, min_spending, discount_rate, referral_bonus, description, badge_icon, badge_color)
+      VALUES 
+        ('普通会员', 1, 0, 0, 5, '注册即可成为普通会员', '🌱', '#95a5a6'),
+        ('白银会员', 2, 100, 3, 10, '累计消费满100元', '🥈', '#c0c0c0'),
+        ('黄金会员', 3, 500, 5, 15, '累计消费满500元', '🥇', '#ffd700'),
+        ('铂金会员', 4, 1000, 8, 20, '累计消费满1000元', '💎', '#e5e4e2'),
+        ('钻石会员', 5, 5000, 12, 30, '累计消费满5000元', '💠', '#b9f2ff')
+      ON CONFLICT (level) DO UPDATE SET
+        name = EXCLUDED.name,
+        min_spending = EXCLUDED.min_spending,
+        discount_rate = EXCLUDED.discount_rate,
+        referral_bonus = EXCLUDED.referral_bonus,
+        description = EXCLUDED.description,
+        badge_icon = EXCLUDED.badge_icon,
+        badge_color = EXCLUDED.badge_color;
+    `);
+    console.log('✅ Inserted default membership levels');
+
+    // Create indexes for new tables
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code);
+      CREATE INDEX IF NOT EXISTS idx_coupons_valid_until ON coupons(valid_until);
+      CREATE INDEX IF NOT EXISTS idx_user_coupons_user_id ON user_coupons(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_coupons_coupon_id ON user_coupons(coupon_id);
+      CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
+      CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id);
+      CREATE INDEX IF NOT EXISTS idx_referrals_code ON referrals(referral_code);
+      CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+      CREATE INDEX IF NOT EXISTS idx_users_membership_level ON users(membership_level);
+    `);
+    console.log('✅ Created indexes for new tables');
+
     // Create updated_at trigger function
     await client.query(`
       CREATE OR REPLACE FUNCTION update_updated_at_column()

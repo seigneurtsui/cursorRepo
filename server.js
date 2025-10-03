@@ -54,7 +54,10 @@ const storage = multer.diskStorage({
     cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}_${Date.now()}${path.extname(file.originalname)}`;
+    // Fix Chinese filename encoding issue
+    // multer uses latin1 by default, need to convert to UTF-8
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const uniqueName = `${uuidv4()}_${Date.now()}${path.extname(originalName)}`;
     cb(null, uniqueName);
   }
 });
@@ -65,12 +68,15 @@ const upload = multer({
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 * 1024 // 10GB
   },
   fileFilter: (req, file, cb) => {
+    // Fix Chinese filename encoding for validation
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    
     const allowedMimes = [
       'video/mp4', 'video/avi', 'video/mkv', 'video/mov',
       'video/flv', 'video/wmv', 'video/webm', 'video/x-matroska',
       'video/quicktime', 'video/x-msvideo'
     ];
-    if (allowedMimes.includes(file.mimetype) || file.originalname.match(/\.(mp4|avi|mkv|mov|flv|wmv|webm)$/i)) {
+    if (allowedMimes.includes(file.mimetype) || originalName.match(/\.(mp4|avi|mkv|mov|flv|wmv|webm)$/i)) {
       cb(null, true);
     } else {
       cb(new Error('不支持的视频格式'));
@@ -182,18 +188,26 @@ async function processVideoFile(videoId) {
     console.log(`🔍 Validating chapter times against video duration: ${duration}s`);
     const validatedChapters = [];
     
+    // First pass: validate basic time constraints
     for (let idx = 0; idx < chaptersData.length; idx++) {
       const ch = chaptersData[idx];
       let startTime = Math.max(0, Math.min(ch.startTime, duration));
-      let endTime = Math.max(startTime, Math.min(ch.endTime, duration));
+      let endTime = ch.endTime;
       
-      // Ensure chapters don't overlap
-      if (idx > 0) {
-        const prevEnd = validatedChapters[idx - 1].endTime;
-        if (startTime < prevEnd) {
-          startTime = prevEnd;
-          endTime = Math.max(startTime, endTime);
-        }
+      // For the last chapter, ensure it ends at video duration
+      if (idx === chaptersData.length - 1) {
+        endTime = duration;
+      } else {
+        // For other chapters, cap at video duration
+        endTime = Math.min(ch.endTime, duration);
+      }
+      
+      // Ensure endTime is after startTime
+      if (endTime <= startTime) {
+        // If endTime is invalid, estimate based on remaining time
+        const remainingChapters = chaptersData.length - idx;
+        const remainingTime = duration - startTime;
+        endTime = Math.min(startTime + (remainingTime / remainingChapters), duration);
       }
       
       validatedChapters.push({
@@ -204,6 +218,28 @@ async function processVideoFile(videoId) {
         description: ch.description || '',
         keyPoints: ch.keyPoints || []
       });
+    }
+    
+    // Second pass: ensure no overlaps and fix any remaining issues
+    for (let idx = 1; idx < validatedChapters.length; idx++) {
+      const current = validatedChapters[idx];
+      const previous = validatedChapters[idx - 1];
+      
+      // If current chapter starts before previous ends, adjust
+      if (current.startTime < previous.endTime) {
+        current.startTime = previous.endTime;
+        
+        // Recalculate endTime if needed
+        if (current.endTime <= current.startTime) {
+          if (idx === validatedChapters.length - 1) {
+            current.endTime = duration;
+          } else {
+            const remainingChapters = validatedChapters.length - idx;
+            const remainingTime = duration - current.startTime;
+            current.endTime = Math.min(current.startTime + (remainingTime / remainingChapters), duration);
+          }
+        }
+      }
     }
 
     // Stage 5: Save chapters to database
@@ -298,9 +334,12 @@ app.post('/api/upload', upload.array('videos', 50), async (req, res) => {
     for (const file of req.files) {
       const stats = await fs.stat(file.path);
       
+      // Fix Chinese filename encoding
+      const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      
       const video = await db.videos.create({
         filename: file.filename,
-        originalName: file.originalname,
+        originalName: originalName,
         filePath: file.path,
         fileSize: stats.size,
         mimeType: file.mimetype,

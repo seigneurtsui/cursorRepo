@@ -274,6 +274,7 @@ async function loadVideos() {
       renderVideos(result.data);
       renderPagination(result.pagination);
       updateStats(result.data);
+      updateSelectedCount();  // Update selection count after rendering
     }
   } catch (error) {
     console.error('Load videos error:', error);
@@ -297,12 +298,19 @@ function renderVideos(videos) {
   }
 
   container.innerHTML = videos.map(video => `
-    <div class="video-card ${video.status}">
+    <div class="video-card ${video.status}" data-video-id="${video.id}">
       <div class="video-card-header">
-        <div>
-          <div class="video-title">${video.original_name}</div>
-          <div class="video-status ${video.status}">
-            ${getStatusText(video.status)}
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" class="video-select-checkbox" 
+                 data-video-id="${video.id}" 
+                 onchange="toggleVideoSelection(${video.id}, this.checked)"
+                 ${selectedVideoIds.has(video.id) ? 'checked' : ''}
+                 style="transform: scale(1.3); cursor: pointer;">
+          <div>
+            <div class="video-title">${video.original_name}</div>
+            <div class="video-status ${video.status}">
+              ${getStatusText(video.status)}
+            </div>
           </div>
         </div>
       </div>
@@ -333,6 +341,11 @@ function renderVideos(videos) {
         ${video.status === 'uploaded' ? `
           <button class="btn-process" onclick="processVideos([${video.id}])">
             ⚙️ 开始处理
+          </button>
+        ` : ''}
+        ${video.status === 'processing' ? `
+          <button class="btn-process" disabled style="opacity: 0.6; cursor: not-allowed;">
+            ⚙️ 处理中...
           </button>
         ` : ''}
         ${video.status === 'completed' && video.chapterCount > 0 ? `

@@ -180,7 +180,10 @@ async function processVideoFile(videoId) {
 
     // Stage 4: Validate and adjust chapter times
     console.log(`🔍 Validating chapter times against video duration: ${duration}s`);
-    const validatedChapters = chaptersData.map((ch, idx) => {
+    const validatedChapters = [];
+    
+    for (let idx = 0; idx < chaptersData.length; idx++) {
+      const ch = chaptersData[idx];
       let startTime = Math.max(0, Math.min(ch.startTime, duration));
       let endTime = Math.max(startTime, Math.min(ch.endTime, duration));
       
@@ -193,15 +196,15 @@ async function processVideoFile(videoId) {
         }
       }
       
-      return {
+      validatedChapters.push({
         chapterIndex: ch.chapterIndex,
         startTime,
         endTime,
         title: ch.title,
         description: ch.description || '',
         keyPoints: ch.keyPoints || []
-      };
-    });
+      });
+    }
 
     // Stage 5: Save chapters to database
     broadcastProgress({

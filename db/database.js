@@ -62,7 +62,14 @@ const db = {
     },
 
     findById: async (id) => {
-      const query = 'SELECT * FROM videos WHERE id = $1';
+      const query = `
+        SELECT v.*, 
+               u.username,
+               u.email as user_email
+        FROM videos v
+        LEFT JOIN users u ON v.user_id = u.id
+        WHERE v.id = $1
+      `;
       const result = await db.query(query, [id]);
       return result.rows[0];
     },

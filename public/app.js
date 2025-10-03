@@ -57,12 +57,6 @@ async function checkAuth() {
           await loadAdminUserFilter();
         }
         
-        // Show export all button in search section
-        const searchExportAllContainer = document.getElementById('searchExportAllContainer');
-        if (searchExportAllContainer) {
-          searchExportAllContainer.style.display = 'block';
-        }
-        
         // Show member explorer button
         const memberExplorerGroup = document.getElementById('memberExplorerGroup');
         if (memberExplorerGroup) {
@@ -603,22 +597,16 @@ function applyFilters() {
   const startDate = document.getElementById('filterStartDate').value;
   const endDate = document.getElementById('filterEndDate').value;
   
-  // Admin: user filter (check both locations)
+  // Admin: user filter (only from video list header)
   const adminUserFilter = document.getElementById('adminUserFilter');
-  const searchUserFilter = document.getElementById('searchUserFilter');
-  const userId = adminUserFilter ? adminUserFilter.value : (searchUserFilter ? searchUserFilter.value : '');
-  
-  // Admin: uploader email search
-  const uploaderEmailSearch = document.getElementById('uploaderEmailSearch');
-  const uploaderEmail = uploaderEmailSearch ? uploaderEmailSearch.value.trim() : '';
+  const userId = adminUserFilter ? adminUserFilter.value : '';
 
   currentFilters = {
     ...(keyword && { keyword }),
     ...(status && { status }),
     ...(startDate && { startDate }),
     ...(endDate && { endDate }),
-    ...(userId && { userId }),
-    ...(uploaderEmail && { uploaderEmail })
+    ...(userId && { userId })
   };
 
   currentPage = 1;
@@ -643,55 +631,86 @@ function resetFilters() {
   loadVideos();
 }
 
-// Export all users' videos to Excel (admin only) - from admin user filter button
+// Export all users' videos to Excel (admin only) - from video list header
 async function exportAllUsersVideos() {
-  if (!confirm('确定要导出全部会员的所有视频信息吗？\n\n导出的Excel文件将包含：\n• 所有会员的视频信息\n• 上传者用户名和邮箱\n• 视频详情和章节列表')) return;
-
   try {
-    showToast('正在生成Excel文件...', 'info');
     const token = localStorage.getItem('token');
     
-    // Get all videos (admin sees all)
-    const response = await fetch(`${API_BASE}/api/videos?limit=ALL`, {
+    // Build query parameters for current filters
+    const params = new URLSearchParams();
+    params.append('limit', 'ALL');
+    
+    // Apply current filters
+    if (currentFilters.keyword) params.append('keyword', currentFilters.keyword);
+    if (currentFilters.status) params.append('status', currentFilters.status);
+    if (currentFilters.startDate) params.append('startDate', currentFilters.startDate);
+    if (currentFilters.endDate) params.append('endDate', currentFilters.endDate);
+    if (currentFilters.userId) params.append('userId', currentFilters.userId);
+    
+    // Show loading toast
+    showToast('正在获取视频数据...', 'info');
+    
+    // Get videos with current filters
+    const response = await fetch(`${API_BASE}/api/videos?${params.toString()}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
+    if (!response.ok) {
+      throw new Error('获取视频数据失败');
+    }
+    
     const result = await response.json();
     
-    if (result.success && result.data.length > 0) {
-      const videoIds = result.data.map(v => v.id);
-      
-      // Export via existing export API
-      const exportResponse = await fetch(`${API_BASE}/api/export`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          format: 'excel',
-          videoIds: videoIds
-        })
-      });
-      
-      if (exportResponse.ok) {
-        const blob = await exportResponse.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `all_users_videos_${Date.now()}.xlsx`;
-        link.click();
-        URL.revokeObjectURL(url);
-        showToast('✅ 导出成功！包含' + result.data.length + '个视频', 'success');
-      } else {
-        throw new Error('导出失败');
-      }
-    } else {
-      showToast('没有可导出的视频数据', 'warning');
+    if (!result.success || !result.data || result.data.length === 0) {
+      showToast('⚠️ 没有可导出的视频数据', 'warning');
+      return;
     }
+    
+    const videoCount = result.data.length;
+    const userInfo = currentFilters.userId ? '（已筛选）' : '（全部会员）';
+    
+    if (!confirm(`确定要导出${videoCount}个视频的信息吗？${userInfo}\n\n导出的Excel文件将包含：\n• 视频详情\n• 上传者用户名和邮箱\n• 章节列表`)) {
+      return;
+    }
+    
+    showToast(`正在导出${videoCount}个视频...`, 'info');
+    
+    const videoIds = result.data.map(v => v.id);
+    
+    // Export via existing export API
+    const exportResponse = await fetch(`${API_BASE}/api/export`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        format: 'excel',
+        videoIds: videoIds
+      })
+    });
+    
+    if (!exportResponse.ok) {
+      const errorData = await exportResponse.json();
+      throw new Error(errorData.error || '导出失败');
+    }
+    
+    // Download the file
+    const blob = await exportResponse.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `videos_export_${Date.now()}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast(`✅ 成功导出${videoCount}个视频！`, 'success');
+    
   } catch (error) {
-    console.error('Export all videos error:', error);
-    showToast('导出失败: ' + error.message, 'error');
+    console.error('Export error:', error);
+    showToast('❌ 导出失败: ' + error.message, 'error');
   }
 }
 

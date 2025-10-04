@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>强制显示会员筛选 - 诊断工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .btn-danger {
+            background: #f44336;
+        }
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        .btn-primary {
+            background: #2196F3;
+        }
+        .btn-primary:hover {
+            background: #0b7dda;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 会员筛选控件诊断工具</h1>
+        
+        <div class="step">
+            <h3>步骤 1: 打开主页面</h3>
+            <p>首先打开主页面并以管理员身份登录</p>
+            <a href="/" class="btn btn-primary" target="_blank">打开主页面</a>
+        </div>
+
+        <div class="step">
+            <h3>步骤 2: 在主页面控制台运行诊断</h3>
+            <p>在主页面按 F12 打开控制台，复制并粘贴以下代码：</p>
+            <div class="code">// ========== 会员筛选控件诊断脚本 ==========
+
+console.log('🔍 开始诊断会员筛选控件...\n');
+
+// 1. 检查元素是否存在
+const element = document.getElementById('adminMemberFilter');
+console.log('1️⃣ 元素是否存在:', element ? '✅ 是' : '❌ 否');
+if (element) {
+    console.log('   元素对象:', element);
+} else {
+    console.error('   ❌ 找不到 adminMemberFilter 元素！');
+}
+
+// 2. 检查当前显示状态
+if (element) {
+    const displayStyle = window.getComputedStyle(element).display;
+    const inlineStyle = element.style.display;
+    console.log('2️⃣ 显示状态:');
+    console.log('   - inline style:', inlineStyle || '(未设置)');
+    console.log('   - computed style:', displayStyle);
+    console.log('   - 是否可见:', displayStyle !== 'none' ? '✅ 是' : '❌ 否');
+}
+
+// 3. 检查用户信息
+console.log('3️⃣ 当前用户:');
+if (typeof currentUser !== 'undefined') {
+    console.log('   - 邮箱:', currentUser.email);
+    console.log('   - 是否管理员:', currentUser.isAdmin ? '✅ 是' : '❌ 否');
+} else {
+    console.error('   ❌ currentUser 未定义');
+}
+
+// 4. 检查父容器
+if (element) {
+    const parent = element.parentElement;
+    console.log('4️⃣ 父容器:');
+    console.log('   - 类名:', parent.className);
+    console.log('   - 父容器display:', window.getComputedStyle(parent).display);
+}
+
+// 5. 检查所有筛选控件
+console.log('5️⃣ 所有筛选控件状态:');
+const filters = {
+    'normalChannelFilter': '普通频道筛选',
+    'adminChannelFilter': '管理员频道筛选',
+    'adminMemberFilter': '管理员会员筛选'
+};
+for (const [id, name] of Object.entries(filters)) {
+    const el = document.getElementById(id);
+    if (el) {
+        const display = window.getComputedStyle(el).display;
+        console.log(`   ${name} (${id}):`, display === 'none' ? '❌ 隐藏' : '✅ 显示');
+    } else {
+        console.log(`   ${name} (${id}): ❌ 不存在`);
+    }
+}
+
+// 6. 强制显示会员筛选
+console.log('\n6️⃣ 尝试强制显示会员筛选...');
+if (element) {
+    element.style.display = 'block';
+    element.style.visibility = 'visible';
+    element.style.opacity = '1';
+    
+    // 滚动到元素位置
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // 添加高亮效果
+    element.style.border = '3px solid red';
+    element.style.backgroundColor = '#fff3cd';
+    
+    setTimeout(() => {
+        element.style.border = '';
+        element.style.backgroundColor = '';
+    }, 3000);
+    
+    console.log('   ✅ 已设置为显示并高亮（红色边框3秒）');
+    console.log('   📍 已滚动到元素位置');
+} else {
+    console.error('   ❌ 无法显示：元素不存在');
+}
+
+console.log('\n✅ 诊断完成！');
+console.log('📝 如果看到红色边框，说明元素存在但之前被隐藏了');
+console.log('📝 如果看不到红色边框，说明元素真的不存在');
+</div>
+        </div>
+
+        <div class="step">
+            <h3>步骤 3: 查看诊断结果</h3>
+            <p>控制台会显示详细的诊断信息，告诉你：</p>
+            <ul>
+                <li>✅ 元素是否存在</li>
+                <li>✅ 当前显示状态</li>
+                <li>✅ 是否是管理员</li>
+                <li>✅ 所有筛选控件的状态</li>
+            </ul>
+            <p><strong>如果元素存在</strong>，脚本会自动：</p>
+            <ul>
+                <li>🔵 强制显示元素</li>
+                <li>🔵 添加红色边框高亮（3秒）</li>
+                <li>🔵 滚动到元素位置</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>步骤 4: 提供诊断结果</h3>
+            <p>请截图并提供控制台的完整输出，特别是：</p>
+            <ul>
+                <li>📋 "1️⃣ 元素是否存在" 的结果</li>
+                <li>📋 "2️⃣ 显示状态" 的结果</li>
+                <li>📋 "3️⃣ 当前用户" 的结果</li>
+                <li>📋 "5️⃣ 所有筛选控件状态" 的结果</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>备选方案：一键诊断链接</h3>
+            <p>如果你已经在主页面，直接点击下面的按钮执行诊断：</p>
+            <button class="btn" onclick="runDiagnostics()">🔍 运行诊断脚本</button>
+            <p style="color: #999; font-size: 14px;">（仅在主页面有效）</p>
+        </div>
+
+        <div class="step">
+            <h3>快捷链接</h3>
+            <a href="/public/clear.html" class="btn btn-danger" target="_blank">清除缓存</a>
+            <a href="/public/login.html" class="btn btn-primary" target="_blank">登录页面</a>
+            <a href="/" class="btn" target="_blank">主页面</a>
+        </div>
+    </div>
+
+    <script>
+        function runDiagnostics() {
+            // 尝试在当前窗口运行（如果是在主页面）
+            try {
+                if (typeof document.getElementById('adminMemberFilter') !== 'undefined') {
+                    eval(document.querySelector('.code').textContent);
+                } else {
+                    alert('❌ 请在主页面运行此诊断脚本！\n\n步骤：\n1. 打开主页面\n2. 按 F12 打开控制台\n3. 复制粘贴上面的代码');
+                }
+            } catch (e) {
+                alert('❌ 请在主页面运行此诊断脚本！\n\n步骤：\n1. 打开主页面\n2. 按 F12 打开控制台\n3. 复制粘贴上面的代码');
+            }
+        }
+    </script>
+</body>
+</html>

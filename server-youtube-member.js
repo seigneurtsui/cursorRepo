@@ -110,10 +110,12 @@ app.post('/api/search', authenticate, checkBalance(5), async (req, res) => {
             // 获取 playlistId：可能在 id.playlistId 或 id 本身
             const playlistId = playlist.id?.playlistId || playlist.id;
             
-            if (!playlistId) {
-                console.warn('⚠️  跳过无效的播放列表:', playlist);
+            if (!playlistId || typeof playlistId !== 'string') {
+                console.warn('⚠️  跳过无效的播放列表，ID:', JSON.stringify(playlist.id));
                 continue;
             }
+            
+            console.log('📺 处理播放列表:', playlistId.substring(0, 20) + '...');
             
             try {
                 const playlistItemsResponse = await youtube.playlistItems.list({
@@ -130,7 +132,8 @@ app.post('/api/search', authenticate, checkBalance(5), async (req, res) => {
                     }
                 });
             } catch (playlistError) {
-                console.error(`❌ 获取播放列表 ${playlistId} 失败:`, playlistError.message);
+                const errorMsg = playlistError.message || playlistError.toString();
+                console.error(`❌ 获取播放列表失败 [ID: ${playlistId}]:`, errorMsg);
                 // 继续处理其他播放列表
                 continue;
             }
@@ -230,7 +233,7 @@ app.post('/api/search', authenticate, checkBalance(5), async (req, res) => {
 🎉 数据已成功保存到数据库，可以在主页面查看和筛选。`;
 
         // 异步发送通知（不阻塞响应）
-        notificationService.sendAllChannels(notificationTitle, notificationContent).catch(err => {
+        notificationService.sendNotifications(notificationTitle, notificationContent).catch(err => {
             console.error('发送通知失败:', err);
         });
         
@@ -454,7 +457,7 @@ app.post('/api/fetch-by-channels', authenticate, checkBalance(5), async (req, re
 🎉 数据已成功保存到数据库，可以在主页面查看和筛选。`;
 
         // 异步发送通知（不阻塞响应）
-        notificationService.sendAllChannels(notificationTitle, notificationContent).catch(err => {
+        notificationService.sendNotifications(notificationTitle, notificationContent).catch(err => {
             console.error('发送通知失败:', err);
         });
         

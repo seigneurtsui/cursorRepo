@@ -121,22 +121,44 @@ const migrate = async () => {
       console.log('  ✅ Inserted 4 default membership levels');
     }
 
-    // ==================== Create user_coupons table ====================
+    // ==================== Create coupons table (主表) ====================
+    console.log('\n📝 Checking coupons table...');
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(100),
+        description TEXT,
+        discount_type VARCHAR(20),
+        discount_value NUMERIC(10, 2),
+        min_amount NUMERIC(10, 2) DEFAULT 0,
+        max_uses INTEGER DEFAULT 1,
+        used_count INTEGER DEFAULT 0,
+        valid_from TIMESTAMP DEFAULT NOW(),
+        valid_until TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    console.log('  ✅ Created/verified table: coupons');
+    
+    // ==================== Create user_coupons table (用户优惠券关联表) ====================
     console.log('\n📝 Checking user_coupons table...');
     
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_coupons (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        code VARCHAR(50) UNIQUE NOT NULL,
-        name VARCHAR(100),
-        discount_type VARCHAR(20),
-        discount_value NUMERIC(10, 2),
-        min_amount NUMERIC(10, 2),
-        expires_at TIMESTAMP,
-        is_active BOOLEAN DEFAULT TRUE,
+        coupon_id INTEGER REFERENCES coupons(id) ON DELETE CASCADE,
+        code VARCHAR(50) NOT NULL,
+        is_used BOOLEAN DEFAULT FALSE,
         used_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW()
+        transaction_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, coupon_id)
       )
     `);
     console.log('  ✅ Created/verified table: user_coupons');

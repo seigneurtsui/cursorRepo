@@ -900,7 +900,10 @@
                 console.log('📥 loadUserList: 响应状态', response.status);
                 
                 if (response.ok) {
-                    const users = await response.json();
+                    const responseData = await response.json();
+                    console.log('📦 loadUserList: 原始响应', responseData);
+                    
+                    const users = responseData.users || responseData;
                     console.log('✅ loadUserList: 获取到', users.length, '个用户');
                     const select = document.getElementById('userFilter');
                     

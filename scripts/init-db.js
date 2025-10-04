@@ -294,9 +294,11 @@ const initializeDatabase = async () => {
     
     // Add notification config columns to users table
     await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS wxpusher_token VARCHAR(100);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS wxpusher_uid VARCHAR(100);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS pushplus_token VARCHAR(100);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_email VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_bot_token VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(50);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_enabled BOOLEAN DEFAULT TRUE;
     `);

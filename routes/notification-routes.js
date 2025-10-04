@@ -16,9 +16,11 @@ router.get('/user/config', authenticate, async (req, res) => {
   try {
     const result = await db.query(`
       SELECT 
+        wxpusher_token,
         wxpusher_uid, 
         pushplus_token, 
         resend_email, 
+        telegram_bot_token,
         telegram_chat_id, 
         notification_enabled
       FROM users 
@@ -41,19 +43,21 @@ router.get('/user/config', authenticate, async (req, res) => {
  * Update current user's notification configuration
  */
 router.post('/user/config', authenticate, async (req, res) => {
-  const { wxpusher_uid, pushplus_token, resend_email, telegram_chat_id, notification_enabled } = req.body;
+  const { wxpusher_token, wxpusher_uid, pushplus_token, resend_email, telegram_bot_token, telegram_chat_id, notification_enabled } = req.body;
   
   try {
     await db.query(`
       UPDATE users SET
-        wxpusher_uid = $1,
-        pushplus_token = $2,
-        resend_email = $3,
-        telegram_chat_id = $4,
-        notification_enabled = $5,
+        wxpusher_token = $1,
+        wxpusher_uid = $2,
+        pushplus_token = $3,
+        resend_email = $4,
+        telegram_bot_token = $5,
+        telegram_chat_id = $6,
+        notification_enabled = $7,
         updated_at = NOW()
-      WHERE id = $6
-    `, [wxpusher_uid, pushplus_token, resend_email, telegram_chat_id, notification_enabled, req.user.id]);
+      WHERE id = $8
+    `, [wxpusher_token, wxpusher_uid, pushplus_token, resend_email, telegram_bot_token, telegram_chat_id, notification_enabled, req.user.id]);
     
     console.log(`✅ User ${req.user.email} updated notification config`);
     res.json({ success: true, message: '通知配置已更新' });
@@ -87,7 +91,7 @@ router.get('/channels', authenticate, async (req, res) => {
  * POST /api/notifications/channels/:channel
  * Admin: Update channel enable/disable status
  */
-router.post('/channels/:channel', requireAdmin, async (req, res) => {
+router.post('/channels/:channel', authenticate, requireAdmin, async (req, res) => {
   const { channel } = req.params;
   const { enabled } = req.body;
   
@@ -162,7 +166,7 @@ router.get('/logs', authenticate, async (req, res) => {
  * GET /api/notifications/export-logs
  * Admin: Export all notification logs to Excel
  */
-router.get('/export-logs', requireAdmin, async (req, res) => {
+router.get('/export-logs', authenticate, requireAdmin, async (req, res) => {
   try {
     // Get all notification logs with user information
     const result = await db.query(`

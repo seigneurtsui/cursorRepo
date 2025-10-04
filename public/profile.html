@@ -192,10 +192,12 @@
             <span style="font-size: 24px;">💚</span>
             <h4 style="margin: 0;">WxPusher 微信推送</h4>
           </div>
+          <input type="text" id="wxpusher_token" placeholder="输入您的 WxPusher Token (例如: AT_xxx)" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
           <input type="text" id="wxpusher_uid" placeholder="输入您的 WxPusher UID (例如: UID_xxx)" 
                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
           <div style="font-size: 12px; color: #666;">
-            <a href="https://wxpusher.zjiecode.com/" target="_blank" style="color: #007bff;">📖 如何获取UID？</a>
+            <a href="https://wxpusher.zjiecode.com/" target="_blank" style="color: #007bff;">📖 如何获取Token和UID？</a>
             <span style="margin-left: 10px;">扫码关注公众号即可获得</span>
           </div>
         </div>
@@ -233,11 +235,13 @@
             <span style="font-size: 24px;">✈️</span>
             <h4 style="margin: 0;">Telegram 电报通知</h4>
           </div>
+          <input type="text" id="telegram_bot_token" placeholder="输入您的 Telegram Bot Token (例如: 123456:ABC...)" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
           <input type="text" id="telegram_chat_id" placeholder="输入您的 Telegram Chat ID" 
                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
           <div style="font-size: 12px; color: #666;">
-            <a href="https://core.telegram.org/bots" target="_blank" style="color: #007bff;">📖 如何获取Chat ID？</a>
-            <span style="margin-left: 10px;">联系 @userinfobot 获取您的ID</span>
+            <a href="https://core.telegram.org/bots" target="_blank" style="color: #007bff;">📖 如何获取Bot Token和Chat ID？</a>
+            <span style="margin-left: 10px;">联系 @BotFather 创建Bot，@userinfobot 获取ID</span>
           </div>
         </div>
       </div>
@@ -1018,9 +1022,11 @@
         
         // Fill form
         document.getElementById('notificationEnabled').checked = config.notification_enabled !== false;
+        document.getElementById('wxpusher_token').value = config.wxpusher_token || '';
         document.getElementById('wxpusher_uid').value = config.wxpusher_uid || '';
         document.getElementById('pushplus_token').value = config.pushplus_token || '';
         document.getElementById('resend_email').value = config.resend_email || '';
+        document.getElementById('telegram_bot_token').value = config.telegram_bot_token || '';
         document.getElementById('telegram_chat_id').value = config.telegram_chat_id || '';
         
         // Disable channels that admin has turned off
@@ -1049,9 +1055,11 @@
       
       const config = {
         notification_enabled: document.getElementById('notificationEnabled').checked,
+        wxpusher_token: document.getElementById('wxpusher_token').value.trim(),
         wxpusher_uid: document.getElementById('wxpusher_uid').value.trim(),
         pushplus_token: document.getElementById('pushplus_token').value.trim(),
         resend_email: document.getElementById('resend_email').value.trim(),
+        telegram_bot_token: document.getElementById('telegram_bot_token').value.trim(),
         telegram_chat_id: document.getElementById('telegram_chat_id').value.trim()
       };
       

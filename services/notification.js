@@ -236,6 +236,39 @@ ${summaryList.join('\n')}
   // ==================== NEW: Video Processing Notifications ====================
   
   /**
+   * Send notification to all admin channels (WxPusher, PushPlus, Resend, Telegram)
+   * @param {String} title - Notification title
+   * @param {String} content - Notification content
+   */
+  async sendAll(title, content) {
+    const results = {
+      wxpusher: { status: 'skipped', error: 'Not configured' },
+      pushplus: { status: 'skipped', error: 'Not configured' },
+      resend: { status: 'skipped', error: 'Not configured' },
+      telegram: { status: 'skipped', error: 'Not configured' }
+    };
+
+    // Send to all configured admin channels
+    if (this.config.wxpusher.token && this.config.wxpusher.uid) {
+      results.wxpusher = await this.sendWxPusher(title, content, this.config.wxpusher.uid);
+    }
+
+    if (this.config.pushplus.token) {
+      results.pushplus = await this.sendPushPlus(title, content, this.config.pushplus.token);
+    }
+
+    if (this.config.resend.apiKey && this.config.resend.toEmail) {
+      results.resend = await this.sendResend(title, content, this.config.resend.toEmail);
+    }
+
+    if (this.config.telegram.botToken && this.config.telegram.chatId) {
+      results.telegram = await this.sendTelegram(title, content, this.config.telegram.chatId);
+    }
+
+    return results;
+  }
+
+  /**
    * Send notification when member starts video processing (to admin)
    * @param {Object} user - User who started processing
    * @param {Object} video - Video being processed

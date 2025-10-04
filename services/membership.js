@@ -13,12 +13,40 @@ class MembershipService {
 
   async getUserMembershipInfo(userId) {
     const query = `
-      SELECT u.membership_level, u.total_spending, ml.*
+      SELECT 
+        u.id,
+        u.total_recharged,
+        ml.id as level_id,
+        ml.name,
+        ml.min_recharge,
+        ml.discount,
+        ml.benefits,
+        ml.icon,
+        ml.sort_order
       FROM users u
-      LEFT JOIN membership_levels ml ON u.membership_level = ml.level
+      LEFT JOIN membership_levels ml ON u.total_recharged >= ml.min_recharge
       WHERE u.id = $1
+      ORDER BY ml.min_recharge DESC
+      LIMIT 1
     `;
     const result = await db.query(query, [userId]);
+    
+    // 如果没有找到匹配的等级，返回默认等级
+    if (!result.rows[0] || !result.rows[0].name) {
+      const defaultLevel = await db.query(`
+        SELECT id as level_id, name, min_recharge, discount, benefits, icon, sort_order
+        FROM membership_levels 
+        ORDER BY min_recharge ASC 
+        LIMIT 1
+      `);
+      if (defaultLevel.rows[0]) {
+        return {
+          ...defaultLevel.rows[0],
+          total_recharged: result.rows[0]?.total_recharged || 0
+        };
+      }
+    }
+    
     return result.rows[0];
   }
 

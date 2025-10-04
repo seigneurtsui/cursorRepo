@@ -811,38 +811,51 @@
     }
     
     function renderMembershipLevel(membership) {
-      if (!membership) {
-        document.getElementById('membershipLevelContainer').innerHTML = '<div style="color: #999;">暂无等级信息</div>';
+      if (!membership || !membership.name) {
+        document.getElementById('membershipLevelContainer').innerHTML = '<div style="color: #999; padding: 20px; text-align: center;">暂无等级信息</div>';
         return;
       }
       
+      // 根据等级名称设置颜色
+      const levelColors = {
+        '普通会员': '#95a5a6',
+        '银牌会员': '#c0c0c0',
+        '金牌会员': '#ffd700',
+        '钻石会员': '#b9f2ff'
+      };
+      const color = levelColors[membership.name] || '#667eea';
+      
       const html = `
-        <div style="background: linear-gradient(135deg, ${membership.badge_color || '#95a5a6'}20 0%, ${membership.badge_color || '#95a5a6'}40 100%); padding: 25px; border-radius: 12px; border-left: 5px solid ${membership.badge_color || '#95a5a6'};">
+        <div style="background: linear-gradient(135deg, ${color}20 0%, ${color}40 100%); padding: 25px; border-radius: 12px; border-left: 5px solid ${color};">
           <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-            <div style="font-size: 48px;">${membership.badge_icon || '🌱'}</div>
+            <div style="font-size: 48px;">${membership.icon || '🌱'}</div>
             <div>
-              <div style="font-size: 24px; font-weight: bold; color: ${membership.badge_color || '#95a5a6'};">
+              <div style="font-size: 24px; font-weight: bold; color: ${color};">
                 ${membership.name}
               </div>
               <div style="font-size: 14px; color: #666; margin-top: 5px;">
-                ${membership.description}
+                累计充值: ¥${parseFloat(membership.total_recharged || 0).toFixed(2)}
               </div>
             </div>
           </div>
           
           <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+            <div style="margin-bottom: 15px;">
+              <div style="font-size: 14px; color: #666; margin-bottom: 8px;"><strong>等级权益：</strong></div>
+              <div style="color: #333;">${membership.benefits || '基础功能'}</div>
+            </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
               <div style="text-align: center;">
-                <div style="font-size: 12px; color: #999;">累计消费</div>
-                <div style="font-size: 20px; font-weight: bold; color: #667eea;">¥${parseFloat(membership.total_spending || 0).toFixed(2)}</div>
+                <div style="font-size: 12px; color: #999;">累计充值</div>
+                <div style="font-size: 20px; font-weight: bold; color: #667eea;">¥${parseFloat(membership.total_recharged || 0).toFixed(2)}</div>
               </div>
               <div style="text-align: center;">
                 <div style="font-size: 12px; color: #999;">会员折扣</div>
-                <div style="font-size: 20px; font-weight: bold; color: #28a745;">${membership.discount_rate || 0}%</div>
+                <div style="font-size: 20px; font-weight: bold; color: #28a745;">${membership.discount || 0}% OFF</div>
               </div>
               <div style="text-align: center;">
-                <div style="font-size: 12px; color: #999;">推荐奖励</div>
-                <div style="font-size: 20px; font-weight: bold; color: #ffc107;">¥${parseFloat(membership.referral_bonus || 0).toFixed(2)}</div>
+                <div style="font-size: 12px; color: #999;">最低充值</div>
+                <div style="font-size: 20px; font-weight: bold; color: #ffc107;">¥${parseFloat(membership.min_recharge || 0).toFixed(0)}</div>
               </div>
             </div>
           </div>

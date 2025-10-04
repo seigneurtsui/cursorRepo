@@ -1602,38 +1602,61 @@
 
         // ========== 导出 ==========
         function exportData() {
+            console.log('📥 开始导出Excel...');
             const token = localStorage.getItem('token');
+            
+            if (!token) {
+                alert('请先登录');
+                window.location.href = '/public/login.html';
+                return;
+            }
+            
             let params = new URLSearchParams({
                 sortBy: currentSortBy,
                 sortOrder: currentSortOrder
             });
             
-            const searchTerm = document.getElementById('searchInput').value.trim();
-            const channelFilter = document.getElementById('channelFilter').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
+            const searchTerm = document.getElementById('searchInput')?.value.trim() || '';
+            const startDate = document.getElementById('startDate')?.value || '';
+            const endDate = document.getElementById('endDate')?.value || '';
+            
+            // 处理频道筛选（支持多选）
+            let channelFilter = '';
+            if (currentUser && currentUser.isAdmin && adminSelectedChannels.length > 0) {
+                // 管理员：使用管理员选择的频道
+                channelFilter = adminSelectedChannels.join(',');
+            } else if (selectedChannels && selectedChannels.length > 0) {
+                // 普通用户：使用普通用户选择的频道
+                channelFilter = selectedChannels.join(',');
+            }
+            
+            // 管理员：处理会员筛选（支持多选）
+            let memberFilter = '';
+            if (currentUser && currentUser.isAdmin && adminSelectedMembers.length > 0) {
+                memberFilter = adminSelectedMembers.map(m => m.id).join(',');
+            }
             
             if (searchTerm) params.append('search', searchTerm);
             if (channelFilter) params.append('channel', channelFilter);
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
-            if (currentFilterUserId) params.append('filterUserId', currentFilterUserId);
             
-            // 创建临时form来下载
-            const form = document.createElement('form');
-            form.method = 'GET';
-            form.action = `/api/export?${params}`;
-            form.style.display = 'none';
+            // 会员筛选优先
+            if (memberFilter) {
+                params.append('filterUserId', memberFilter);
+            } else if (currentFilterUserId) {
+                params.append('filterUserId', currentFilterUserId);
+            }
             
-            const tokenInput = document.createElement('input');
-            tokenInput.type = 'hidden';
-            tokenInput.name = 'token';
-            tokenInput.value = token;
-            form.appendChild(tokenInput);
+            // 添加token到URL
+            params.append('token', token);
             
-            document.body.appendChild(form);
-            form.submit();
-            document.body.removeChild(form);
+            console.log('📊 导出参数:', params.toString());
+            
+            // 直接跳转下载
+            const url = `/api/export?${params}`;
+            console.log('🔗 导出URL:', url);
+            window.location.href = url;
         }
 
         // ========== 描述弹窗 ==========

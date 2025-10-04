@@ -150,6 +150,7 @@ const migrate = async () => {
         referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         reward_amount NUMERIC(10, 2) DEFAULT 0,
+        reward_given BOOLEAN DEFAULT FALSE,
         status VARCHAR(20) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT NOW(),
         rewarded_at TIMESTAMP,
@@ -157,6 +158,19 @@ const migrate = async () => {
       )
     `);
     console.log('  ✅ Created/verified table: referrals');
+    
+    // Check and add reward_given column if missing
+    const checkRewardGiven = await client.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name='referrals' AND column_name='reward_given'
+    `);
+    
+    if (checkRewardGiven.rows.length === 0) {
+      await client.query(`ALTER TABLE referrals ADD COLUMN reward_given BOOLEAN DEFAULT FALSE`);
+      console.log('  ✅ Added column: referrals.reward_given');
+    } else {
+      console.log('  ⏭️  Column exists: referrals.reward_given');
+    }
 
     // ==================== Create notification_channel_settings table ====================
     console.log('\n📝 Checking notification_channel_settings table...');

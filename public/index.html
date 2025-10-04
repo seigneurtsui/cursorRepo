@@ -36,6 +36,16 @@
             0% { transform: rotate(0deg); } 
             100% { transform: rotate(360deg); } 
         }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes slideOutRight {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
         .line-clamp-3 { 
             overflow: hidden; 
             display: -webkit-box; 
@@ -833,6 +843,88 @@
             }
         }
 
+        // 显示美化的成功通知
+        function showSuccessNotification(message) {
+            // 创建通知容器
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                min-width: 320px;
+                max-width: 500px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px 25px;
+                border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+                z-index: 10000;
+                animation: slideInRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            `;
+            
+            // 解析消息（提取关键信息）
+            const videoMatch = message.match(/(\d+)\s*条视频/);
+            const recordMatch = message.match(/(\d+)\s*条记录/);
+            const feeMatch = message.match(/(\d+)\s*元/);
+            
+            const videoCount = videoMatch ? videoMatch[1] : '0';
+            const recordCount = recordMatch ? recordMatch[1] : '0';
+            const fee = feeMatch ? feeMatch[1] : '5';
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 15px;">
+                    <div style="
+                        width: 48px;
+                        height: 48px;
+                        background: rgba(255, 255, 255, 0.2);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 24px;
+                        flex-shrink: 0;
+                    ">✅</div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+                            🎉 频道视频获取完成！
+                        </div>
+                        <div style="font-size: 14px; opacity: 0.95; line-height: 1.6;">
+                            <div style="margin: 4px 0;">📊 共处理 <strong>${videoCount}</strong> 条视频</div>
+                            <div style="margin: 4px 0;">💾 新增或更新 <strong>${recordCount}</strong> 条记录</div>
+                            <div style="margin: 4px 0;">💰 已扣费 <strong>¥${fee}</strong> 元</div>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" style="
+                        background: rgba(255, 255, 255, 0.2);
+                        border: none;
+                        color: white;
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        font-size: 18px;
+                        line-height: 1;
+                        padding: 0;
+                        transition: all 0.3s;
+                    " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
+                </div>
+            `;
+            
+            // 添加到页面
+            document.body.appendChild(notification);
+            
+            // 5秒后自动消失
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.5s ease-in-out';
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 500);
+            }, 5000);
+        }
+
         // ========== YouTube API 调用 ==========
         async function searchVideosByKeyword() {
             const keyword = document.getElementById('keyword').value.trim();
@@ -896,9 +988,14 @@
                     updateBalance(result.balance);
                 }
                 
-                alert(result.message);
+                // 显示美化的成功通知
+                showSuccessNotification(result.message);
+                
+                // 刷新统计和视频列表
+                console.log('🔄 刷新统计数据和视频列表...');
                 await fetchStats();
                 await fetchVideos();
+                console.log('✅ 数据刷新完成');
                 
             } catch (err) {
                 console.error('搜索错误:', err);
@@ -1429,9 +1526,14 @@
                     updateBalance(result.balance);
                 }
                 
-                alert(result.message);
+                // 显示美化的成功通知
+                showSuccessNotification(result.message);
+                
+                // 刷新统计和视频列表
+                console.log('🔄 刷新统计数据和视频列表...');
                 await fetchStats();
                 await fetchVideos();
+                console.log('✅ 数据刷新完成');
                 
             } catch (err) {
                 console.error('获取错误:', err);

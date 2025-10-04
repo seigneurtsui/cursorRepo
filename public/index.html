@@ -1077,9 +1077,19 @@
                 // 显示美化的成功通知
                 showSuccessNotification(result.message);
                 
-                // 刷新统计和视频列表
-                console.log('🔄 刷新统计数据和视频列表...');
+                // 刷新统计、频道列表和视频列表
+                console.log('🔄 刷新统计数据、频道列表和视频列表...');
                 await fetchStats();
+                
+                // 重新加载频道筛选列表
+                if (currentUser && currentUser.isAdmin) {
+                    console.log('📺 重新加载管理员频道筛选...');
+                    await loadAdminChannelFilter();
+                } else {
+                    console.log('📺 重新加载普通用户频道筛选...');
+                    await loadChannelFilter();
+                }
+                
                 await fetchVideos();
                 console.log('✅ 数据刷新完成');
                 
@@ -1806,9 +1816,19 @@
                 // 显示美化的成功通知
                 showSuccessNotification(result.message);
                 
-                // 刷新统计和视频列表
-                console.log('🔄 刷新统计数据和视频列表...');
+                // 刷新统计、频道列表和视频列表
+                console.log('🔄 刷新统计数据、频道列表和视频列表...');
                 await fetchStats();
+                
+                // 重新加载频道筛选列表
+                if (currentUser && currentUser.isAdmin) {
+                    console.log('📺 重新加载管理员频道筛选...');
+                    await loadAdminChannelFilter();
+                } else {
+                    console.log('📺 重新加载普通用户频道筛选...');
+                    await loadChannelFilter();
+                }
+                
                 await fetchVideos();
                 console.log('✅ 数据刷新完成');
                 

@@ -1921,7 +1921,9 @@
                     return;
                 }
                 
-                const channels = await response.json();
+                const responseData = await response.json();
+                console.log('📦 loadAdminChannelFilter: 原始响应', responseData);
+                const channels = Array.isArray(responseData) ? responseData : (responseData.channels || responseData.data || []);
                 allChannelsData = channels;
                 renderAdminChannelList(channels);
             } catch (error) {
@@ -2233,7 +2235,9 @@
                     return;
                 }
                 
-                const users = await response.json();
+                const responseData = await response.json();
+                console.log('📦 loadAdminMemberFilter: 原始响应', responseData);
+                const users = responseData.users || responseData;
                 // 转换为会员对象数组，包含 id, email, username
                 allMembersData = users.map(u => ({
                     id: u.id,

@@ -464,7 +464,7 @@
                                     </button>
                                     
                                     <!-- 下拉菜单 -->
-                                    <div id="fetch-channel-dropdown" class="absolute w-full mt-1 bg-white border-2 border-green-400 rounded-md shadow-xl hidden" style="max-height: 400px; z-index: 9999;">
+                                    <div id="fetch-channel-dropdown" class="fixed bg-white border-2 border-green-400 rounded-md shadow-2xl hidden" style="max-height: 400px; z-index: 9999; min-width: 300px;">
                                         <!-- 搜索框 -->
                                         <div class="p-3 border-b border-gray-200 bg-green-50">
                                             <div class="relative">
@@ -2566,11 +2566,22 @@
         // 切换下拉菜单
         function toggleFetchChannelDropdown() {
             const dropdown = document.getElementById('fetch-channel-dropdown');
+            const button = document.getElementById('fetch-channel-select-btn');
             
             // 先关闭所有其他下拉菜单，避免重叠
             closeAllOtherDropdowns('fetch-channel-dropdown');
             
-            dropdown.classList.toggle('hidden');
+            if (dropdown.classList.contains('hidden')) {
+                // 打开下拉菜单 - 使用 fixed 定位，计算按钮位置
+                const rect = button.getBoundingClientRect();
+                dropdown.style.left = rect.left + 'px';
+                dropdown.style.top = (rect.bottom + 4) + 'px';
+                dropdown.style.width = rect.width + 'px';
+                dropdown.classList.remove('hidden');
+            } else {
+                // 关闭下拉菜单
+                dropdown.classList.add('hidden');
+            }
         }
         
         // 关闭所有其他下拉菜单

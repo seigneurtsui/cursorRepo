@@ -608,10 +608,18 @@ app.get('/api/videos-paginated', authenticate, async (req, res) => {
             queryParams.push(userId);
             paramIndex++;
         } else if (isAdmin && filterUserId) {
-            // 管理员可以筛选特定用户
-            whereClauses.push(`user_id = $${paramIndex}`);
-            queryParams.push(parseInt(filterUserId));
-            paramIndex++;
+            // 管理员可以筛选特定用户（支持多个，逗号分隔）
+            const userIds = filterUserId.split(',').map(id => id.trim()).filter(id => id);
+            if (userIds.length === 1) {
+                whereClauses.push(`user_id = $${paramIndex}`);
+                queryParams.push(parseInt(userIds[0]));
+                paramIndex++;
+            } else if (userIds.length > 1) {
+                const placeholders = userIds.map((_, i) => `$${paramIndex + i}`).join(', ');
+                whereClauses.push(`user_id IN (${placeholders})`);
+                queryParams.push(...userIds.map(id => parseInt(id)));
+                paramIndex += userIds.length;
+            }
         }
 
         if (search) {
@@ -632,9 +640,20 @@ app.get('/api/videos-paginated', authenticate, async (req, res) => {
             paramIndex++;
         }
         if (channel) {
-            whereClauses.push(`channel_title = $${paramIndex}`);
-            queryParams.push(channel);
-            paramIndex++;
+            // 支持多个频道（逗号分隔）
+            const channels = channel.split(',').map(c => c.trim()).filter(c => c);
+            if (channels.length === 1) {
+                // 单个频道：使用精确匹配
+                whereClauses.push(`channel_title = $${paramIndex}`);
+                queryParams.push(channels[0]);
+                paramIndex++;
+            } else if (channels.length > 1) {
+                // 多个频道：使用 IN 语句
+                const placeholders = channels.map((_, i) => `$${paramIndex + i}`).join(', ');
+                whereClauses.push(`channel_title IN (${placeholders})`);
+                queryParams.push(...channels);
+                paramIndex += channels.length;
+            }
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -730,9 +749,18 @@ app.get('/api/export', async (req, res) => {
             queryParams.push(userId);
             paramIndex++;
         } else if (isAdmin && filterUserId) {
-            whereClauses.push(`user_id = $${paramIndex}`);
-            queryParams.push(parseInt(filterUserId));
-            paramIndex++;
+            // 管理员可以筛选特定用户（支持多个，逗号分隔）
+            const userIds = filterUserId.split(',').map(id => id.trim()).filter(id => id);
+            if (userIds.length === 1) {
+                whereClauses.push(`user_id = $${paramIndex}`);
+                queryParams.push(parseInt(userIds[0]));
+                paramIndex++;
+            } else if (userIds.length > 1) {
+                const placeholders = userIds.map((_, i) => `$${paramIndex + i}`).join(', ');
+                whereClauses.push(`user_id IN (${placeholders})`);
+                queryParams.push(...userIds.map(id => parseInt(id)));
+                paramIndex += userIds.length;
+            }
         }
 
         if (search) {
@@ -753,13 +781,24 @@ app.get('/api/export', async (req, res) => {
             paramIndex++;
         }
         if (channel) {
-            whereClauses.push(`channel_title = $${paramIndex}`);
-            queryParams.push(channel);
-            paramIndex++;
+            // 支持多个频道（逗号分隔）
+            const channels = channel.split(',').map(c => c.trim()).filter(c => c);
+            if (channels.length === 1) {
+                // 单个频道：使用精确匹配
+                whereClauses.push(`channel_title = $${paramIndex}`);
+                queryParams.push(channels[0]);
+                paramIndex++;
+            } else if (channels.length > 1) {
+                // 多个频道：使用 IN 语句
+                const placeholders = channels.map((_, i) => `$${paramIndex + i}`).join(', ');
+                whereClauses.push(`channel_title IN (${placeholders})`);
+                queryParams.push(...channels);
+                paramIndex += channels.length;
+            }
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-        
+
         const allowedSortBy = ['published_at', 'view_count', 'like_count', 'comment_count'];
         const allowedSortOrder = ['ASC', 'DESC'];
         const finalSortBy = allowedSortBy.includes(sortBy) ? sortBy : 'published_at';

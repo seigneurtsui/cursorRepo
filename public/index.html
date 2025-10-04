@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube 视频搜索与导出 - 会员系统</title>
-    <script src="cdn.tailwindcss.com_3.4.17.js"></script>
-    <script src="auth-helper.js"></script>
+    <script src="/public/cdn.tailwindcss.com_3.4.17.js"></script>
     <style>
         .loader { 
             border: 4px solid #f3f3f3; 
@@ -14,6 +13,7 @@
             width: 24px; 
             height: 24px; 
             animation: spin 2s linear infinite; 
+            display: inline-block;
         }
         @keyframes spin { 
             0% { transform: rotate(0deg); } 
@@ -66,6 +66,8 @@
             transition: all 0.3s;
             background: transparent;
             color: white;
+            text-decoration: none;
+            display: inline-block;
         }
         .btn-header:hover {
             background: white;
@@ -129,18 +131,18 @@
         #description-modal.visible {
             transform: translate(-50%, -50%);
         }
-        #modal-body::-webkit-scrollbar, #channel-list::-webkit-scrollbar, #channel-select-list::-webkit-scrollbar {
+        #modal-body::-webkit-scrollbar {
             width: 8px;
         }
-        #modal-body::-webkit-scrollbar-track, #channel-list::-webkit-scrollbar-track, #channel-select-list::-webkit-scrollbar-track {
+        #modal-body::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 10px;
         }
-        #modal-body::-webkit-scrollbar-thumb, #channel-list::-webkit-scrollbar-thumb, #channel-select-list::-webkit-scrollbar-thumb {
+        #modal-body::-webkit-scrollbar-thumb {
             background: #d1d5db;
             border-radius: 10px;
         }
-        #modal-body::-webkit-scrollbar-thumb:hover, #channel-list::-webkit-scrollbar-thumb:hover, #channel-select-list::-webkit-scrollbar-thumb:hover {
+        #modal-body::-webkit-scrollbar-thumb:hover {
             background: #9ca3af;
         }
         
@@ -155,248 +157,291 @@
             color: #92400e;
             font-weight: 500;
         }
+        
+        /* 加载遮罩 */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
 
-    <!-- 描述弹窗 -->
-    <div id="description-modal-overlay"></div>
-    <div id="description-modal">
-        <div class="flex items-center justify-between p-5 border-b bg-white rounded-t-xl">
-            <h3 id="modal-title" class="text-xl font-bold text-gray-900 truncate pr-4">视频描述</h3>
-            <button id="modal-close-btn" class="text-gray-400 hover:text-gray-800 transition-colors text-3xl font-light leading-none">&times;</button>
-        </div>
-        <div id="modal-body" class="p-6 overflow-y-auto text-gray-700 bg-gray-50 text-base leading-relaxed whitespace-pre-wrap"></div>
-        <div class="p-4 bg-gray-100 border-t rounded-b-xl text-right">
-            <button id="copy-description-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-600 transition-all duration-300">复制描述</button>
-        </div>
+    <!-- 加载遮罩 -->
+    <div id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p class="mt-4 text-gray-600">正在验证登录状态...</p>
     </div>
 
-    <!-- 用户信息栏 -->
-    <div class="user-header">
-        <div class="flex justify-between items-center">
-            <div class="user-info">
-                <h2 class="text-xl font-bold">🎬 YouTube 视频搜索与导出</h2>
-                <span id="userEmail" class="text-sm opacity-90"></span>
-                <span id="adminBadge" class="admin-badge" style="display: none;">管理员</span>
-                <span class="balance-badge">💰 余额: ¥<span id="userBalance">0.00</span></span>
-            </div>
-            <div class="user-info">
-                <button class="btn-header" onclick="location.href='profile.html'">
-                    👤 个人中心
-                </button>
-                <button class="btn-header" onclick="location.href='admin.html'" id="adminBtn" style="display: none;">
-                    ⚙️ 管理后台
-                </button>
-                <button class="btn-header" onclick="logout()">
-                    🚪 退出登录
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div class="container mx-auto p-4 md:p-8">
+    <!-- 主内容（初始隐藏） -->
+    <div id="main-content" style="display: none;">
         
-        <!-- 管理员专用：会员筛选 -->
-        <div id="adminControls" class="admin-controls" style="display: none;">
-            <label class="font-semibold text-amber-900 mr-3">
-                👤 筛选会员：
-            </label>
-            <select id="userFilter" onchange="filterByUser()">
-                <option value="">全部会员</option>
-            </select>
-            <span class="ml-4 text-amber-800 text-sm">
-                （管理员可查看所有会员的视频数据）
-            </span>
+        <!-- 描述弹窗 -->
+        <div id="description-modal-overlay"></div>
+        <div id="description-modal">
+            <div class="flex items-center justify-between p-5 border-b bg-white rounded-t-xl">
+                <h3 id="modal-title" class="text-xl font-bold text-gray-900 truncate pr-4">视频描述</h3>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-gray-800 transition-colors text-3xl font-light leading-none">&times;</button>
+            </div>
+            <div id="modal-body" class="p-6 overflow-y-auto text-gray-700 bg-gray-50 text-base leading-relaxed whitespace-pre-wrap"></div>
+            <div class="p-4 bg-gray-100 border-t rounded-b-xl text-right">
+                <button id="copy-description-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-600 transition-all duration-300">复制描述</button>
+            </div>
         </div>
 
-        <!-- 统计信息 -->
-        <header class="mb-6">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="text-center">
-                        <p class="text-gray-600 text-sm mb-1">数据库中的视频总数</p>
-                        <p class="text-4xl font-bold text-blue-600" id="totalVideos">0</p>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-gray-600 text-sm mb-1">每次获取数据费用</p>
-                        <p class="text-4xl font-bold text-green-600">¥5</p>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-gray-600 text-sm mb-1">可用次数</p>
-                        <p class="text-4xl font-bold text-purple-600" id="availableTimes">0</p>
-                    </div>
+        <!-- 用户信息栏 -->
+        <div class="user-header">
+            <div class="flex justify-between items-center flex-wrap gap-4">
+                <div class="user-info">
+                    <h2 class="text-xl font-bold">🎬 YouTube 视频搜索与导出</h2>
+                    <span id="userEmail" class="text-sm opacity-90"></span>
+                    <span id="adminBadge" class="admin-badge" style="display: none;">管理员</span>
+                    <span class="balance-badge">💰 余额: ¥<span id="userBalance">0.00</span></span>
+                </div>
+                <div class="user-info">
+                    <a href="/public/profile.html" class="btn-header">
+                        👤 个人中心
+                    </a>
+                    <a href="/public/admin.html" id="adminBtn" class="btn-header" style="display: none;">
+                        ⚙️ 管理后台
+                    </a>
+                    <button class="btn-header" onclick="logout()">
+                        🚪 退出登录
+                    </button>
                 </div>
             </div>
-        </header>
+        </div>
 
-        <!-- 从 YouTube 获取数据 -->
-        <section class="mb-8">
-            <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-                <h2 class="text-2xl font-bold mb-4 flex items-center">
-                    <span class="mr-2">🔍</span> 从 YouTube 获取数据
-                </h2>
-                
-                <!-- 关键词搜索 -->
-                <div class="bg-white bg-opacity-20 rounded-lg p-4 mb-4 backdrop-blur-sm">
-                    <h3 class="font-semibold mb-3 flex items-center">
-                        <span class="mr-2">📝</span> 方式1: 关键词搜索
-                    </h3>
-                    <div class="flex flex-col md:flex-row gap-3">
-                        <input 
-                            type="text" 
-                            id="keyword" 
-                            placeholder="输入关键词（如：Python教程）" 
-                            class="flex-1 px-4 py-2 rounded-md text-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                        >
+        <div class="container mx-auto p-4 md:p-8">
+            
+            <!-- 管理员专用：会员筛选 -->
+            <div id="adminControls" class="admin-controls" style="display: none;">
+                <label class="font-semibold text-amber-900 mr-3">
+                    👤 筛选会员：
+                </label>
+                <select id="userFilter" onchange="filterByUser()">
+                    <option value="">全部会员</option>
+                </select>
+                <span class="ml-4 text-amber-800 text-sm">
+                    （管理员可查看所有会员的视频数据）
+                </span>
+            </div>
+
+            <!-- 统计信息 -->
+            <header class="mb-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <p class="text-gray-600 text-sm mb-1">数据库中的视频总数</p>
+                            <p class="text-4xl font-bold text-blue-600" id="totalVideos">0</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-gray-600 text-sm mb-1">每次获取数据费用</p>
+                            <p class="text-4xl font-bold text-green-600">¥5</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-gray-600 text-sm mb-1">可用次数</p>
+                            <p class="text-4xl font-bold text-purple-600" id="availableTimes">0</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 从 YouTube 获取数据 -->
+            <section class="mb-8">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center">
+                        <span class="mr-2">🔍</span> 从 YouTube 获取数据
+                    </h2>
+                    
+                    <!-- 关键词搜索 -->
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4 mb-4 backdrop-blur-sm">
+                        <h3 class="font-semibold mb-3 flex items-center">
+                            <span class="mr-2">📝</span> 方式1: 关键词搜索
+                        </h3>
+                        <div class="flex flex-col md:flex-row gap-3">
+                            <input 
+                                type="text" 
+                                id="keyword" 
+                                placeholder="输入关键词（如：Python教程）" 
+                                class="flex-1 px-4 py-2 rounded-md text-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                            >
+                            <button 
+                                id="searchBtn" 
+                                onclick="searchVideosByKeyword()" 
+                                class="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center justify-center whitespace-nowrap"
+                            >
+                                <span class="mr-2">🚀</span> 获取数据并入库 (¥5)
+                            </button>
+                        </div>
+                        <div class="cost-warning mt-3">
+                            💡 提示：每次搜索将扣费 5元，会获取相关播放列表中的视频数据
+                        </div>
+                    </div>
+
+                    <!-- 按频道获取 -->
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">
+                        <h3 class="font-semibold mb-3 flex items-center">
+                            <span class="mr-2">📺</span> 方式2: 按指定频道获取
+                        </h3>
                         <button 
-                            id="searchBtn" 
-                            onclick="searchVideosByKeyword()" 
-                            class="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center justify-center whitespace-nowrap"
+                            onclick="openChannelModal()" 
+                            class="bg-green-400 hover:bg-green-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center"
                         >
-                            <span class="mr-2">🚀</span> 获取数据并入库 (5元)
+                            <span class="mr-2">➕</span> 选择频道并获取 (¥5)
+                        </button>
+                        <div class="cost-warning mt-3">
+                            💡 提示：每次按频道获取将扣费 5元，会获取该频道的所有视频
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 筛选和排序 -->
+            <section class="mb-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">🔧 筛选和排序</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">搜索关键词</label>
+                            <input 
+                                type="text" 
+                                id="searchInput" 
+                                placeholder="标题或描述..." 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">频道筛选</label>
+                            <select 
+                                id="channelFilter" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">全部频道</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">起始日期</label>
+                            <input 
+                                type="date" 
+                                id="startDate" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
+                            <input 
+                                type="date" 
+                                id="endDate" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">排序方式</label>
+                            <select 
+                                id="sortBy" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="published_at">发布日期</option>
+                                <option value="view_count">观看数</option>
+                                <option value="like_count">点赞数</option>
+                                <option value="comment_count">评论数</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">排序顺序</label>
+                            <select 
+                                id="sortOrder" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="DESC">降序</option>
+                                <option value="ASC">升序</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">每页显示</label>
+                            <select 
+                                id="limitSelect" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="9">9</option>
+                                <option value="18">18</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="0">全部</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex gap-3">
+                        <button 
+                            onclick="applyFilters()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-md transition-all duration-300"
+                        >
+                            应用筛选
+                        </button>
+                        <button 
+                            onclick="resetFilters()" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md transition-all duration-300"
+                        >
+                            重置
+                        </button>
+                        <button 
+                            onclick="exportData()" 
+                            class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-md transition-all duration-300 flex items-center"
+                        >
+                            <span class="mr-2">📥</span> 导出 Excel
                         </button>
                     </div>
-                    <div class="cost-warning mt-3">
-                        💡 提示：每次搜索将扣费 5元，会获取相关播放列表中的视频数据
-                    </div>
                 </div>
+            </section>
 
-                <!-- 按频道获取 -->
-                <div class="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">
-                    <h3 class="font-semibold mb-3 flex items-center">
-                        <span class="mr-2">📺</span> 方式2: 按指定频道获取
-                    </h3>
-                    <button 
-                        onclick="openChannelModal()" 
-                        class="bg-green-400 hover:bg-green-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center"
-                    >
-                        <span class="mr-2">➕</span> 选择频道并获取 (5元)
-                    </button>
-                    <div class="cost-warning mt-3">
-                        💡 提示：每次按频道获取将扣费 5元，会获取该频道的所有视频
+            <!-- 视频列表 -->
+            <section>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">📹 视频列表</h2>
+                    <div id="videoList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]">
+                        <div class="col-span-full text-center py-12 text-gray-500">
+                            加载中...
+                        </div>
                     </div>
+                    
+                    <!-- 分页 -->
+                    <div id="pagination" class="mt-6 flex justify-center items-center gap-2"></div>
                 </div>
-            </div>
-        </section>
-
-        <!-- 筛选和排序 -->
-        <section class="mb-6">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-bold mb-4 text-gray-800">🔧 筛选和排序</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">搜索关键词</label>
-                        <input 
-                            type="text" 
-                            id="searchInput" 
-                            placeholder="标题或描述..." 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">频道筛选</label>
-                        <select 
-                            id="channelFilter" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">全部频道</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">起始日期</label>
-                        <input 
-                            type="date" 
-                            id="startDate" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
-                        <input 
-                            type="date" 
-                            id="endDate" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">排序方式</label>
-                        <select 
-                            id="sortBy" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="published_at">发布日期</option>
-                            <option value="view_count">观看数</option>
-                            <option value="like_count">点赞数</option>
-                            <option value="comment_count">评论数</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">排序顺序</label>
-                        <select 
-                            id="sortOrder" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="DESC">降序</option>
-                            <option value="ASC">升序</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">每页显示</label>
-                        <select 
-                            id="limitSelect" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="9">9</option>
-                            <option value="18">18</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                            <option value="0">全部</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mt-4 flex gap-3">
-                    <button 
-                        onclick="applyFilters()" 
-                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-md transition-all duration-300"
-                    >
-                        应用筛选
-                    </button>
-                    <button 
-                        onclick="resetFilters()" 
-                        class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-md transition-all duration-300"
-                    >
-                        重置
-                    </button>
-                    <button 
-                        onclick="exportData()" 
-                        class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-md transition-all duration-300 flex items-center"
-                    >
-                        <span class="mr-2">📥</span> 导出 Excel
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 视频列表 -->
-        <section>
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-bold mb-4 text-gray-800">📹 视频列表</h2>
-                <div id="videoList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]">
-                    <div class="col-span-full text-center py-12 text-gray-500">
-                        加载中...
-                    </div>
-                </div>
-                
-                <!-- 分页 -->
-                <div id="pagination" class="mt-6 flex justify-center items-center gap-2"></div>
-            </div>
-        </section>
+            </section>
+        </div>
     </div>
 
     <script>
+        // ========== 立即执行认证检查 ==========
+        (function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log('No token found, redirecting to login...');
+                window.location.href = '/public/login.html';
+                return;
+            }
+        })();
+
         // ========== 全局变量 ==========
         let currentUser = null;
         let currentFilterUserId = '';
@@ -408,17 +453,13 @@
         // ========== 页面加载初始化 ==========
         document.addEventListener('DOMContentLoaded', async function() {
             await checkAuthAndLoadUser();
-            await fetchStats();
-            await fetchChannels();
-            await fetchVideos();
         });
 
         // ========== 认证相关函数 ==========
         async function checkAuthAndLoadUser() {
             const token = localStorage.getItem('token');
             if (!token) {
-                alert('请先登录！');
-                window.location.href = 'login.html';
+                window.location.href = '/public/login.html';
                 return;
             }
             
@@ -433,6 +474,10 @@
                 
                 currentUser = await response.json();
                 
+                // 隐藏加载遮罩，显示主内容
+                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                
                 // 显示用户信息
                 document.getElementById('userEmail').textContent = currentUser.email;
                 document.getElementById('userBalance').textContent = parseFloat(currentUser.balance).toFixed(2);
@@ -446,11 +491,16 @@
                     await loadUserList();
                 }
                 
+                // 加载数据
+                await fetchStats();
+                await fetchChannels();
+                await fetchVideos();
+                
             } catch (error) {
                 console.error('认证失败:', error);
                 alert('登录已过期，请重新登录');
                 localStorage.removeItem('token');
-                window.location.href = 'login.html';
+                window.location.href = '/public/login.html';
             }
         }
 
@@ -476,7 +526,7 @@
                     users.forEach(user => {
                         const option = document.createElement('option');
                         option.value = user.id;
-                        option.textContent = `${user.email} (${user.video_count} 个视频, 余额¥${user.balance})`;
+                        option.textContent = `${user.email} (${user.video_count} 个视频, 余额¥${parseFloat(user.balance).toFixed(2)})`;
                         select.appendChild(option);
                     });
                 }
@@ -497,7 +547,8 @@
         function logout() {
             if (confirm('确定要退出登录吗？')) {
                 localStorage.removeItem('token');
-                window.location.href = 'login.html';
+                localStorage.removeItem('user');
+                window.location.href = '/public/login.html';
             }
         }
 
@@ -527,7 +578,7 @@
             if (parseFloat(currentUser.balance) < 5) {
                 alert('余额不足！请先充值。');
                 if (confirm('是否前往充值页面？')) {
-                    window.location.href = 'profile.html';
+                    window.location.href = '/public/profile.html';
                 }
                 return;
             }
@@ -535,7 +586,7 @@
             const btn = document.getElementById('searchBtn');
             const originalHTML = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<div class="loader inline-block mr-2"></div> 搜索中...';
+            btn.innerHTML = '<div class="loader mr-2"></div> 搜索中...';
             
             try {
                 const token = localStorage.getItem('token');
@@ -550,10 +601,16 @@
                 
                 const result = await res.json();
                 
+                if (res.status === 401) {
+                    alert('登录已过期，请重新登录');
+                    window.location.href = '/public/login.html';
+                    return;
+                }
+                
                 if (res.status === 402) {
-                    alert(`余额不足！当前余额: ¥${result.balance}，需要: ¥${result.required}`);
+                    alert(`余额不足！当前余额: ¥${result.balance || 0}，需要: ¥${result.required || 5}`);
                     if (confirm('是否前往充值？')) {
-                        window.location.href = 'profile.html';
+                        window.location.href = '/public/profile.html';
                     }
                     return;
                 }
@@ -589,11 +646,15 @@
                 });
                 
                 if (res.status === 401) {
-                    window.location.href = 'login.html';
+                    window.location.href = '/public/login.html';
                     return;
                 }
                 
-                if (!res.ok) throw new Error('获取统计失败');
+                if (!res.ok) {
+                    console.error('获取统计失败');
+                    return;
+                }
+                
                 const data = await res.json();
                 document.getElementById('totalVideos').textContent = data.totalVideos.toLocaleString();
                 
@@ -654,11 +715,14 @@
                 });
                 
                 if (res.status === 401) {
-                    window.location.href = 'login.html';
+                    window.location.href = '/public/login.html';
                     return;
                 }
                 
-                if (!res.ok) throw new Error('获取视频失败');
+                if (!res.ok) {
+                    console.error('获取视频失败');
+                    return;
+                }
                 
                 const responseData = await res.json();
                 const { data, pagination } = responseData;
@@ -668,7 +732,6 @@
                 currentPage = pagination.page;
             } catch (err) {
                 console.error('获取视频数据错误:', err);
-                alert('获取视频失败: ' + err.message);
             }
         }
 
@@ -687,9 +750,9 @@
             
             container.innerHTML = videos.map(video => `
                 <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300 overflow-hidden">
-                    <img src="${video.thumbnail_url}" alt="${video.title}" class="w-full h-48 object-cover">
+                    <img src="${video.thumbnail_url}" alt="${video.title}" class="w-full h-48 object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22%3E暂无图片%3C/text%3E%3C/svg%3E'">
                     <div class="p-4">
-                        <h3 class="font-bold text-gray-800 line-clamp-2 mb-2">${video.title}</h3>
+                        <h3 class="font-bold text-gray-800 line-clamp-2 mb-2 min-h-[48px]">${video.title}</h3>
                         <p class="text-sm text-gray-600 mb-2">${video.channel_title}</p>
                         <div class="flex justify-between text-xs text-gray-500 mb-3">
                             <span>👁 ${parseInt(video.view_count).toLocaleString()}</span>
@@ -701,7 +764,7 @@
                                class="flex-1 bg-red-500 hover:bg-red-600 text-white text-center py-2 rounded text-sm transition-colors">
                                 观看
                             </a>
-                            <button onclick='showDescription(${JSON.stringify(video.description)})' 
+                            <button onclick='showDescription(\`${(video.description || '').replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)' 
                                     class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-sm transition-colors">
                                 描述
                             </button>
@@ -724,7 +787,7 @@
             // 上一页
             html += `<button onclick="fetchVideos(${currentPage - 1})" 
                             ${currentPage === 1 ? 'disabled' : ''} 
-                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
                         上一页
                     </button>`;
             
@@ -736,7 +799,7 @@
             // 下一页
             html += `<button onclick="fetchVideos(${currentPage + 1})" 
                             ${currentPage === pagination.totalPages ? 'disabled' : ''} 
-                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
                         下一页
                     </button>`;
             
@@ -786,7 +849,21 @@
             if (endDate) params.append('endDate', endDate);
             if (currentFilterUserId) params.append('filterUserId', currentFilterUserId);
             
-            window.location.href = `/api/export?${params}`;
+            // 创建临时form来下载
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = `/api/export?${params}`;
+            form.style.display = 'none';
+            
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'token';
+            tokenInput.value = token;
+            form.appendChild(tokenInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
         }
 
         // ========== 描述弹窗 ==========
@@ -840,7 +917,7 @@
             if (parseFloat(currentUser.balance) < 5) {
                 alert('余额不足！请先充值。');
                 if (confirm('是否前往充值页面？')) {
-                    window.location.href = 'profile.html';
+                    window.location.href = '/public/profile.html';
                 }
                 return;
             }
@@ -858,10 +935,16 @@
                 
                 const result = await res.json();
                 
+                if (res.status === 401) {
+                    alert('登录已过期，请重新登录');
+                    window.location.href = '/public/login.html';
+                    return;
+                }
+                
                 if (res.status === 402) {
-                    alert(`余额不足！当前余额: ¥${result.balance}，需要: ¥${result.required}`);
+                    alert(`余额不足！当前余额: ¥${result.balance || 0}，需要: ¥${result.required || 5}`);
                     if (confirm('是否前往充值？')) {
-                        window.location.href = 'profile.html';
+                        window.location.href = '/public/profile.html';
                     }
                     return;
                 }

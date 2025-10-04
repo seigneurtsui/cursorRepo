@@ -626,7 +626,32 @@ app.get('/api/videos-paginated', authenticate, async (req, res) => {
  * @desc    导出Excel（基于用户权限）
  * @access  Private
  */
-app.get('/api/export', authenticate, async (req, res) => {
+app.get('/api/export', async (req, res) => {
+    // 从query参数或header获取token
+    const token = req.query.token || req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+        return res.status(401).json({ error: '未登录' });
+    }
+    
+    // 手动验证token
+    const authService = require('./services/auth');
+    let decoded;
+    try {
+        decoded = authService.verifyToken(token);
+        if (!decoded) {
+            return res.status(401).json({ error: '登录已过期' });
+        }
+        const user = await authService.getUserById(decoded.id);
+        if (!user) {
+            return res.status(401).json({ error: '用户不存在' });
+        }
+        req.user = user;
+    } catch (error) {
+        return res.status(401).json({ error: '认证失败' });
+    }
+    
+    // 继续原有逻辑
     try {
         const { 
             sortBy = 'published_at', 
@@ -720,7 +745,9 @@ app.get('/api/export', authenticate, async (req, res) => {
         res.end();
     } catch (err) {
         console.error('Export error:', err);
-        res.status(500).json({ error: '导出失败' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: '导出失败' });
+        }
     }
 });
 

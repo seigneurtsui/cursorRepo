@@ -715,6 +715,10 @@
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-bold text-gray-800">📹 视频列表</h2>
+                        
+                        <!-- 分页控件（移到中间） -->
+                        <div id="pagination" class="flex justify-center items-center gap-2"></div>
+                        
                         <div id="videoStats" class="flex items-center gap-4 text-sm">
                             <div class="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
                                 <span class="font-medium">总视频:</span>
@@ -731,9 +735,6 @@
                             加载中...
                         </div>
                     </div>
-                    
-                    <!-- 分页 -->
-                    <div id="pagination" class="mt-6 flex justify-center items-center gap-2"></div>
                 </div>
             </section>
         </div>

@@ -400,9 +400,13 @@
     // exportUsers now replaced by exportFilteredUsers in admin-enhanced.js
 
     // Toggle user active status
-    async function toggleUserStatus(userId, currentStatus) {
-      const action = currentStatus ? '禁用' : '激活';
-      if (!confirm(`确定要${action}此用户吗？${!currentStatus ? '' : '\n\n禁用后该用户将无法登录系统。'}`)) return;
+    async function toggleUserStatus(userId, username, newStatus) {
+      const action = newStatus ? '激活' : '禁用';
+      const confirmMessage = newStatus 
+        ? `确定要激活此用户吗？\n\n用户: ${username}\n\n激活后该用户将可以正常登录系统。`
+        : `确定要禁用此用户吗？\n\n用户: ${username}\n\n禁用后该用户将无法登录系统。`;
+      
+      if (!confirm(confirmMessage)) return;
 
       try {
         const token = localStorage.getItem('token');
@@ -412,20 +416,20 @@
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ isActive: !currentStatus })
+          body: JSON.stringify({ isActive: newStatus })
         });
 
         const result = await response.json();
         
         if (result.success) {
-          alert(`用户${action}成功！`);
+          showToast(`✅ 用户${action}成功`);
           loadAdminData(); // Reload users
         } else {
-          alert('操作失败: ' + result.error);
+          alert('❌ 操作失败: ' + result.error);
         }
       } catch (error) {
         console.error('操作失败:', error);
-        alert('操作失败');
+        alert('❌ 操作失败');
       }
     }
 

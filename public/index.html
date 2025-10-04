@@ -825,14 +825,25 @@
                     await loadUserList();
                     
                     // 显示管理员频道筛选和会员筛选，隐藏普通频道筛选
+                    console.log('🔍 查找 adminMemberFilter 元素...');
+                    const adminMemberFilterEl = document.getElementById('adminMemberFilter');
+                    console.log('👉 adminMemberFilter 元素:', adminMemberFilterEl);
+                    
                     document.getElementById('normalChannelFilter').style.display = 'none';
                     document.getElementById('adminChannelFilter').style.display = 'block';
-                    document.getElementById('adminMemberFilter').style.display = 'block';
+                    
+                    if (adminMemberFilterEl) {
+                        adminMemberFilterEl.style.display = 'block';
+                        console.log('✅ adminMemberFilter 已设置为显示');
+                    } else {
+                        console.error('❌ adminMemberFilter 元素未找到！');
+                    }
                     
                     console.log('📺 加载管理员频道筛选...');
                     await loadAdminChannelFilter();
                     console.log('👥 加载管理员会员筛选...');
                     await loadAdminMemberFilter();
+                    console.log('✅ 管理员控件加载完成');
                 } else {
                     console.log('👤 普通用户模式');
                     // 普通用户：加载普通频道筛选，隐藏管理员筛选

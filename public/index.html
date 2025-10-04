@@ -197,6 +197,63 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+        
+        /* 频道输入模态框 */
+        .channel-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .channel-modal-overlay.active {
+            display: flex;
+        }
+        .channel-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 550px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .channel-modal-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .channel-modal-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .format-example {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #495057;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -209,6 +266,40 @@
 
     <!-- 主内容（初始隐藏） -->
     <div id="main-content" style="display: none;">
+        
+        <!-- 频道输入模态框 -->
+        <div class="channel-modal-overlay" id="channelInputModal">
+            <div class="channel-modal">
+                <h3 style="margin: 0 0 20px 0; font-size: 24px; color: #333; display: flex; align-items: center; gap: 10px;">
+                    📺 输入频道信息
+                </h3>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #666;">频道标识</label>
+                    <input type="text" id="channelIdInput" placeholder="请输入频道ID或用户名" class="channel-modal-input">
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; color: #666;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">💡 支持的格式：</div>
+                    <div style="line-height: 1.8;">
+                        • 用户名: <span class="format-example">@username</span><br>
+                        • 频道ID: <span class="format-example">UCxxxxxxxxxxxxxxxx</span><br>
+                        • 自定义URL: <span class="format-example">c/customname</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button onclick="closeChannelModal()" 
+                            style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; transition: background 0.3s;">
+                        取消
+                    </button>
+                    <button onclick="submitChannelId()" 
+                            style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; transition: background 0.3s;">
+                        确定获取
+                    </button>
+                </div>
+            </div>
+        </div>
         
         <!-- 描述弹窗 -->
         <div id="description-modal-overlay"></div>
@@ -912,13 +1003,50 @@
             });
         });
 
-        // ========== 频道选择（简化版）==========
+        // ========== 频道选择（美化版）==========
         function openChannelModal() {
-            const channelId = prompt('请输入频道ID或用户名（如：@username 或 UCxxxxxxx）：');
-            if (!channelId) return;
-            
-            fetchByChannels([channelId.trim()]);
+            const modal = document.getElementById('channelInputModal');
+            modal.classList.add('active');
+            document.getElementById('channelIdInput').value = '';
+            document.getElementById('channelIdInput').focus();
         }
+
+        function closeChannelModal() {
+            const modal = document.getElementById('channelInputModal');
+            modal.classList.remove('active');
+        }
+
+        function submitChannelId() {
+            const channelId = document.getElementById('channelIdInput').value.trim();
+            if (!channelId) {
+                alert('请输入频道标识');
+                return;
+            }
+            closeChannelModal();
+            fetchByChannels([channelId]);
+        }
+
+        // 支持回车键提交
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('channelIdInput');
+            if (input) {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        submitChannelId();
+                    }
+                });
+            }
+            
+            // 点击模态框外部关闭
+            const modal = document.getElementById('channelInputModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeChannelModal();
+                    }
+                });
+            }
+        });
 
         async function fetchByChannels(identifiers) {
             if (!identifiers || identifiers.length === 0) {

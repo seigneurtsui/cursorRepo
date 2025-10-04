@@ -150,7 +150,7 @@ function renderUsersTable() {
           <th onclick="sortUsers('id')" style="cursor: pointer;">ID ${sortIcon('id')}</th>
           <th onclick="sortUsers('email')" style="cursor: pointer;">邮箱 ${sortIcon('email')}</th>
           <th onclick="sortUsers('username')" style="cursor: pointer;">用户名 ${sortIcon('username')}</th>
-          <th onclick="sortUsers('balance')" style="cursor: pointer;">余额 ${sortIcon('balance')}</th>
+          <th>余额</th>
           <th onclick="sortUsers('is_active')" style="cursor: pointer;">状态 ${sortIcon('is_active')}</th>
           <th onclick="sortUsers('phone')" style="cursor: pointer;">手机 ${sortIcon('phone')}</th>
           <th onclick="sortUsers('created_at')" style="cursor: pointer;">注册时间 ${sortIcon('created_at')}</th>
@@ -163,7 +163,12 @@ function renderUsersTable() {
             <td>${user.id}</td>
             <td>${user.email}</td>
             <td>${user.username}${user.is_admin ? ' <span style="background: #ffc107; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">管理员</span>' : ''}</td>
-            <td id="balance-${user.id}">¥${parseFloat(user.balance).toFixed(2)}</td>
+            <td>
+              <span id="balance-${user.id}" style="color: #28a745; font-weight: 600;">¥${parseFloat(user.balance).toFixed(2)}</span>
+              ${!user.is_admin ? `
+                <button onclick="adjustBalance(${user.id}, '${user.username}')" class="btn btn-sm" style="margin-left: 5px; padding: 2px 8px; font-size: 12px; background: #17a2b8; color: white;">💰</button>
+              ` : ''}
+            </td>
             <td>
               <span style="color: ${user.is_active ? '#28a745' : '#dc3545'};">
                 ${user.is_active ? '✅ 激活' : '❌ 禁用'}
@@ -177,7 +182,6 @@ function renderUsersTable() {
                         onclick="toggleUserStatus(${user.id}, '${user.username}', ${!user.is_active})">
                   ${user.is_active ? '禁用' : '激活'}
                 </button>
-                <button class="btn btn-sm btn-info" onclick="showAdjustBalanceModal(${user.id}, '${user.username}', ${user.balance})">调整余额</button>
                 <button class="btn btn-sm btn-warning" onclick="resetUserPassword(${user.id}, '${user.username}')">重置密码</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.username}')">删除</button>
               ` : '<span style="color: #999;">-</span>'}
@@ -661,7 +665,7 @@ function renderLogsTable() {
       <thead>
         <tr>
           <th onclick="sortLogs('id')" style="cursor: pointer;">ID ${sortIcon('id')}</th>
-          <th onclick="sortLogs('username')" style="cursor: pointer;">用户 ${sortIcon('username')}</th>
+          <th onclick="sortLogs('user_id')" style="cursor: pointer;">用户 ${sortIcon('user_id')}</th>
           <th onclick="sortLogs('notification_type')" style="cursor: pointer;">类型 ${sortIcon('notification_type')}</th>
           <th onclick="sortLogs('channel')" style="cursor: pointer;">渠道 ${sortIcon('channel')}</th>
           <th onclick="sortLogs('title')" style="cursor: pointer;">标题 ${sortIcon('title')}</th>

@@ -725,11 +725,13 @@
                     document.getElementById('normalChannelFilter').style.display = 'none';
                     document.getElementById('adminChannelFilter').style.display = 'block';
                     await loadAdminChannelFilter();
+                } else {
+                    // 普通用户：加载普通频道筛选
+                    await loadChannelFilter();
                 }
                 
                 // 加载数据
                 await fetchStats();
-                await loadChannelFilter();  // 加载频道筛选（普通用户）
                 await fetchVideos();
                 
             } catch (error) {

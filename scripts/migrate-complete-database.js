@@ -217,7 +217,8 @@ const migrate = async () => {
     console.log('\n📝 Checking transactions table...');
     
     const txColumns = [
-      { name: 'plan_id', type: 'INTEGER REFERENCES payment_plans(id)' }
+      { name: 'payment_plan_id', type: 'INTEGER REFERENCES payment_plans(id)' },
+      { name: 'status', type: 'VARCHAR(50) DEFAULT \'completed\'' }
     ];
 
     for (const col of txColumns) {
@@ -229,6 +230,8 @@ const migrate = async () => {
       if (check.rows.length === 0) {
         await client.query(`ALTER TABLE transactions ADD COLUMN ${col.name} ${col.type}`);
         console.log(`  ✅ Added column: transactions.${col.name}`);
+      } else {
+        console.log(`  ⏭️  Column exists: transactions.${col.name}`);
       }
     }
 

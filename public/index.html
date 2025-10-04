@@ -2522,9 +2522,20 @@
             console.log('   - 生成的HTML长度:', html.length);
             console.log('   - HTML片段预览:', html.substring(0, 200));
             
-            document.getElementById('fetch-channel-list').innerHTML = html || 
+            const container = document.getElementById('fetch-channel-list');
+            console.log('   - 容器元素:', container);
+            console.log('   - 容器存在:', !!container);
+            
+            if (!container) {
+                console.error('❌ 找不到容器元素 #fetch-channel-list');
+                return;
+            }
+            
+            container.innerHTML = html || 
                 '<li class="px-4 py-8 text-center text-gray-500">无匹配频道</li>';
             
+            console.log('   - 容器innerHTML已设置，长度:', container.innerHTML.length);
+            console.log('   - 容器children数量:', container.children.length);
             console.log('✅ renderFetchChannelList 渲染完成');
         }
         

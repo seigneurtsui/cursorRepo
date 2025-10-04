@@ -1,4 +1,4 @@
-// server.js
+// server.js - YouTube Search & Export with User Authentication
 
 // 1. 导入所需模块
 require('dotenv').config();
@@ -8,13 +8,17 @@ const { Pool } = require('pg');
 const exceljs = require('exceljs');
 const cors = require('cors');
 const morgan = require('morgan');
-
-
+const cookieParser = require('cookie-parser');
 const path = require('path');
 
 // 2. 初始化
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Import authentication middleware
+const { authenticate, requireAdmin, checkBalance } = require('./middleware/auth');
+const authRoutes = require('./routes/auth-routes');
+const authService = require('./services/auth');
 
 // YouTube API 配置
 const youtube = google.youtube({
@@ -35,16 +39,20 @@ const pool = new Pool({
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname)));
+
+// Authentication routes
+app.use('/api/auth', authRoutes);
 
 // 4. API 路由定义
 
 /**
  * @route   POST /api/search
  * @desc    根据关键词从 YouTube 搜索播放列表并存入数据库
- * @access  Public
+ * @access  Private (需要登录和余额)
  */
-app.post('/api/search', async (req, res) => {
+app.post('/api/search', authenticate, checkBalance(5), async (req, res) => {
     const { keyword } = req.body;
     if (!keyword) {
         return res.status(400).json({ error: '关键词不能为空' });
@@ -121,8 +129,8 @@ app.post('/api/search', async (req, res) => {
             let updatedOrInsertedCount = 0;
             for (const video of videosToInsert) {
                 const queryText = `
-                    INSERT INTO videos (video_id, playlist_id, title, description, thumbnail_url, published_at, view_count, like_count, comment_count, channel_title, channel_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    INSERT INTO videos (user_id, video_id, playlist_id, title, description, thumbnail_url, published_at, view_count, like_count, comment_count, channel_title, channel_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                     ON CONFLICT (video_id) DO UPDATE SET
                         title = EXCLUDED.title,
                         description = EXCLUDED.description,
@@ -132,20 +140,28 @@ app.post('/api/search', async (req, res) => {
                         like_count = EXCLUDED.like_count,
                         comment_count = EXCLUDED.comment_count,
                         channel_title = EXCLUDED.channel_title,
-                        channel_id = EXCLUDED.channel_id;
+                        channel_id = EXCLUDED.channel_id,
+                        updated_at = NOW();
                 `;
                 const result = await client.query(queryText, [
-                    video.video_id, video.playlist_id, video.title, video.description,
+                    req.user.id, video.video_id, video.playlist_id, video.title, video.description,
                     video.thumbnail_url, video.published_at, video.view_count,
                     video.like_count, video.comment_count, video.channel_title, video.channel_id
                 ]);
                 if (result.rowCount > 0) updatedOrInsertedCount++;
             }
+            
+            // Deduct balance (5 RMB per search)
+            if (!req.user.is_admin) {
+                await authService.deductBalance(req.user.id, 5, `YouTube搜索 - 关键词: ${keyword}`);
+            }
+            
             await client.query('COMMIT');
             // [FIX-1A] 返回包含 updatedOrInsertedCount 的 JSON 对象
             res.status(201).json({ 
                 message: `操作完成，共处理 ${videosToInsert.length} 条视频，新增或更新了 ${updatedOrInsertedCount} 条记录。`,
-                updatedOrInsertedCount: updatedOrInsertedCount 
+                updatedOrInsertedCount: updatedOrInsertedCount,
+                charged: !req.user.is_admin ? 5 : 0
             });
         } catch (dbError) {
             await client.query('ROLLBACK');
@@ -165,9 +181,9 @@ app.post('/api/search', async (req, res) => {
 /**
  * @route   POST /api/fetch-by-channels
  * @desc    根据指定的频道ID或用户名列表，获取所有视频并存入数据库
- * @access  Public
+ * @access  Private (需要登录和余额)
  */
-app.post('/api/fetch-by-channels', async (req, res) => {
+app.post('/api/fetch-by-channels', authenticate, checkBalance(5), async (req, res) => {
     const { identifiers } = req.body;
     if (!identifiers || !Array.isArray(identifiers) || identifiers.length === 0) {
         return res.status(400).json({ error: '频道标识列表不能为空' });
@@ -297,8 +313,8 @@ app.post('/api/fetch-by-channels', async (req, res) => {
             let updatedOrInsertedCount = 0;
             for (const video of videosToInsert) {
                 const queryText = `
-                    INSERT INTO videos (video_id, playlist_id, title, description, thumbnail_url, published_at, view_count, like_count, comment_count, channel_title, channel_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    INSERT INTO videos (user_id, video_id, playlist_id, title, description, thumbnail_url, published_at, view_count, like_count, comment_count, channel_title, channel_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                     ON CONFLICT (video_id) DO UPDATE SET
                         title = EXCLUDED.title,
                         description = EXCLUDED.description,
@@ -308,20 +324,28 @@ app.post('/api/fetch-by-channels', async (req, res) => {
                         like_count = EXCLUDED.like_count,
                         comment_count = EXCLUDED.comment_count,
                         channel_title = EXCLUDED.channel_title,
-                        channel_id = EXCLUDED.channel_id;
+                        channel_id = EXCLUDED.channel_id,
+                        updated_at = NOW();
                 `;
                 const result = await client.query(queryText, [
-                    video.video_id, video.playlist_id, video.title, video.description,
+                    req.user.id, video.video_id, video.playlist_id, video.title, video.description,
                     video.thumbnail_url, video.published_at, video.view_count,
                     video.like_count, video.comment_count, video.channel_title, video.channel_id
                 ]);
                 if (result.rowCount > 0) updatedOrInsertedCount++;
             }
+            
+            // Deduct balance (5 RMB per fetch)
+            if (!req.user.is_admin) {
+                await authService.deductBalance(req.user.id, 5, `YouTube频道获取 - 频道数: ${uniqueChannelIds.length}`);
+            }
+            
             await client.query('COMMIT');
             // [FIX-1B] 返回包含 updatedOrInsertedCount 的 JSON 对象
             res.status(201).json({ 
                 message: `操作完成，共处理 ${videosToInsert.length} 条视频，新增或更新了 ${updatedOrInsertedCount} 条记录。`,
-                updatedOrInsertedCount: updatedOrInsertedCount
+                updatedOrInsertedCount: updatedOrInsertedCount,
+                charged: !req.user.is_admin ? 5 : 0
             });
         } catch (dbError) {
             await client.query('ROLLBACK');
@@ -340,11 +364,20 @@ app.post('/api/fetch-by-channels', async (req, res) => {
 /**
  * @route   GET /api/stats
  * @desc    获取数据库中的统计信息（如视频总数）
- * @access  Public
+ * @access  Private (需要登录)
  */
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', authenticate, async (req, res) => {
     try {
-        const totalResult = await pool.query('SELECT COUNT(*) FROM videos');
+        let query = 'SELECT COUNT(*) FROM videos';
+        let params = [];
+        
+        // Data isolation: regular users only see their own data
+        if (!req.user.is_admin) {
+            query += ' WHERE user_id = $1';
+            params.push(req.user.id);
+        }
+        
+        const totalResult = await pool.query(query, params);
         const totalVideos = parseInt(totalResult.rows[0].count, 10);
         res.json({ totalVideos });
     } catch (err) {
@@ -356,15 +389,25 @@ app.get('/api/stats', async (req, res) => {
 /**
  * @route   GET /api/channels
  * @desc    获取所有唯一的频道名称
- * @access  Public
+ * @access  Private (需要登录)
  */
-app.get('/api/channels', async (req, res) => {
+app.get('/api/channels', authenticate, async (req, res) => {
     try {
-        const { rows } = await pool.query(`
+        let query = `
             SELECT DISTINCT channel_title FROM videos 
-            WHERE channel_title IS NOT NULL AND channel_title <> '' 
-            ORDER BY channel_title ASC
-        `);
+            WHERE channel_title IS NOT NULL AND channel_title <> ''
+        `;
+        let params = [];
+        
+        // Data isolation: regular users only see their own data
+        if (!req.user.is_admin) {
+            query += ' AND user_id = $1';
+            params.push(req.user.id);
+        }
+        
+        query += ' ORDER BY channel_title ASC';
+        
+        const { rows } = await pool.query(query, params);
         res.json(rows.map(row => row.channel_title));
     } catch (err) {
         console.error('查询频道数据错误:', err);
@@ -375,16 +418,26 @@ app.get('/api/channels', async (req, res) => {
 /**
  * @route   GET /api/unique-channels
  * @desc    获取所有唯一的频道 ID 和名称
- * @access  Public
+ * @access  Private (需要登录)
  */
-app.get('/api/unique-channels', async (req, res) => {
+app.get('/api/unique-channels', authenticate, async (req, res) => {
     try {
-        const { rows } = await pool.query(`
+        let query = `
             SELECT DISTINCT channel_id, channel_title 
             FROM videos 
             WHERE channel_id IS NOT NULL AND channel_title IS NOT NULL
-            ORDER BY channel_title ASC
-        `);
+        `;
+        let params = [];
+        
+        // Data isolation: regular users only see their own data
+        if (!req.user.is_admin) {
+            query += ' AND user_id = $1';
+            params.push(req.user.id);
+        }
+        
+        query += ' ORDER BY channel_title ASC';
+        
+        const { rows } = await pool.query(query, params);
         res.json(rows);
     } catch (err) {
         console.error('查询唯一频道数据错误:', err);
@@ -396,9 +449,9 @@ app.get('/api/unique-channels', async (req, res) => {
 /**
  * @route   GET /api/videos-paginated
  * @desc    从数据库获取带分页、排序和筛选的视频数据
- * @access  Public
+ * @access  Private (需要登录)
  */
-app.get('/api/videos-paginated', async (req, res) => {
+app.get('/api/videos-paginated', authenticate, async (req, res) => {
     try {
         const { 
             page = 1, 
@@ -408,7 +461,8 @@ app.get('/api/videos-paginated', async (req, res) => {
             search = '',
             startDate,
             endDate,
-            channel = ''
+            channel = '',
+            userId = null  // Admin can filter by userId
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -416,6 +470,19 @@ app.get('/api/videos-paginated', async (req, res) => {
         let whereClauses = [];
         let queryParams = [];
         let paramIndex = 1;
+
+        // Data isolation: regular users only see their own data
+        // Admin can see all data or filter by specific user
+        if (!req.user.is_admin) {
+            whereClauses.push(`user_id = $${paramIndex}`);
+            queryParams.push(req.user.id);
+            paramIndex++;
+        } else if (userId) {
+            // Admin filtering by specific user
+            whereClauses.push(`user_id = $${paramIndex}`);
+            queryParams.push(parseInt(userId));
+            paramIndex++;
+        }
 
         if (search) {
             whereClauses.push(`(title ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`);
@@ -481,9 +548,9 @@ app.get('/api/videos-paginated', async (req, res) => {
 /**
  * @route   GET /api/export
  * @desc    将筛选后的数据导出为 Excel 文件
- * @access  Public
+ * @access  Private (需要登录)
  */
-app.get('/api/export', async (req, res) => {
+app.get('/api/export', authenticate, async (req, res) => {
     try {
         const { 
             sortBy = 'published_at', 
@@ -491,12 +558,24 @@ app.get('/api/export', async (req, res) => {
             search = '',
             startDate,
             endDate,
-            channel = ''
+            channel = '',
+            userId = null
         } = req.query;
 
         let whereClauses = [];
         let queryParams = [];
         let paramIndex = 1;
+
+        // Data isolation: regular users only see their own data
+        if (!req.user.is_admin) {
+            whereClauses.push(`user_id = $${paramIndex}`);
+            queryParams.push(req.user.id);
+            paramIndex++;
+        } else if (userId) {
+            whereClauses.push(`user_id = $${paramIndex}`);
+            queryParams.push(parseInt(userId));
+            paramIndex++;
+        }
 
         if (search) {
             whereClauses.push(`(title ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`);

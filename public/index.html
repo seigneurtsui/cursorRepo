@@ -2503,7 +2503,9 @@
             console.log('   - 过滤后数量:', filteredChannels.length);
             console.log('   - 第一个频道:', filteredChannels[0]);
             
-            const html = filteredChannels.map(channel => `
+            const html = filteredChannels.map((channel, index) => {
+                console.log(`   - 频道 ${index}: "${channel}" (长度: ${channel?.length}, 类型: ${typeof channel})`);
+                return `
                 <li class="border-b border-gray-100 last:border-0">
                     <label class="flex items-center px-4 py-2.5 hover:bg-green-50 cursor-pointer transition">
                         <input type="checkbox" 
@@ -2511,10 +2513,11 @@
                                ${fetchSelectedChannels_list.includes(channel) ? 'checked' : ''}
                                onchange="toggleFetchChannel('${channel.replace(/'/g, "\\'")}')"
                                class="mr-3 h-4 w-4 text-green-600 rounded cursor-pointer">
-                        <span class="text-sm">${channel}</span>
+                        <span class="text-sm text-gray-900 font-medium">${channel}</span>
                     </label>
                 </li>
-            `).join('');
+            `;
+            }).join('');
             
             console.log('   - 生成的HTML长度:', html.length);
             console.log('   - HTML片段预览:', html.substring(0, 200));

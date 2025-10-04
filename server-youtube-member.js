@@ -42,8 +42,8 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// 只使用 /public 路径，避免根路径冲突
 app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname)));
 
 // Mount routes
 app.use('/api/auth', authRoutes);
@@ -772,9 +772,19 @@ app.get('/api/admin/users', authenticate, requireAdmin, async (req, res) => {
     }
 });
 
-// Serve index page (redirect to public folder)
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// Serve index page with cache busting
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/index.html'));
+    res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    });
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>清除缓存</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 清除缓存</h1>
+        <div class="spinner"></div>
+        <p id="status">正在清除localStorage和sessionStorage...</p>
+    </div>
+    <script>
+        console.log('Clearing localStorage...');
+        localStorage.clear();
+        console.log('Clearing sessionStorage...');
+        sessionStorage.clear();
+        
+        document.getElementById('status').textContent = '✅ 清除完成！3秒后跳转到登录页...';
+        
+        let count = 3;
+        const interval = setInterval(() => {
+            count--;
+            document.getElementById('status').textContent = `✅ 清除完成！${count}秒后跳转到登录页...`;
+            if (count === 0) {
+                clearInterval(interval);
+                console.log('Redirecting to login...');
+                window.location.replace('/public/login.html');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

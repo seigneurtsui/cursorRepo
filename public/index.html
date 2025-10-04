@@ -3,8 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube 视频搜索与导出 - 会员系统</title>
-    <script src="/public/cdn.tailwindcss.com_3.4.17.js"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>YouTube 视频搜索与导出 - 会员系统 v2.0</title>
+    <script>
+        // 🔒 立即检查登录状态 - 在任何内容加载前执行
+        (function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log('❌ 未登录，跳转到登录页...');
+                window.location.replace('/public/login.html');
+                // 停止执行后续代码
+                document.write('Redirecting to login...');
+                throw new Error('Not authenticated');
+            }
+            console.log('✅ Token found, continuing...');
+        })();
+    </script>
+    <script src="cdn.tailwindcss.com_3.4.17.js"></script>
     <style>
         .loader { 
             border: 4px solid #f3f3f3; 

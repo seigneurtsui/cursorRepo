@@ -690,6 +690,11 @@
         let adminSelectedChannels = [];
         let allChannelsData = [];
         let currentChannelFilter = '';
+        
+        // 普通用户频道筛选
+        let selectedChannels = [];
+        let channelsData = [];
+        let channelRemarks = {};
 
         // ========== 页面加载初始化 ==========
         document.addEventListener('DOMContentLoaded', async function() {
@@ -1039,6 +1044,17 @@
         
         async function loadChannelFilter() {
             try {
+                // 从 localStorage 加载频道备注
+                const savedRemarks = localStorage.getItem('channelRemarks');
+                if (savedRemarks) {
+                    try {
+                        channelRemarks = JSON.parse(savedRemarks);
+                    } catch (e) {
+                        console.warn('解析channelRemarks失败:', e);
+                        channelRemarks = {};
+                    }
+                }
+                
                 const token = localStorage.getItem('token');
                 const res = await fetch('/api/channels', {
                     headers: { 'Authorization': `Bearer ${token}` }

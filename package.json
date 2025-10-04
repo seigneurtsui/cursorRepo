@@ -7,7 +7,7 @@
     "start": "node server-youtube-member.js",
     "dev": "nodemon server-youtube-member.js",
     "init-db": "node scripts/init-youtube-member-db.js",
-    "migrate": "node scripts/migrate-add-is-active.js"
+    "migrate": "node scripts/migrate-complete-database.js"
   },
   "keywords": [
     "youtube",

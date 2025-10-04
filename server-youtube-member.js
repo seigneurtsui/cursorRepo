@@ -16,10 +16,12 @@ const authRoutes = require('./routes/auth-routes');
 const membershipRoutes = require('./routes/membership-routes');
 const paymentRoutes = require('./routes/payment-routes');
 const notificationRoutes = require('./routes/notification-routes');
+const NotificationService = require('./services/notification');
 
 // Initialize app
 const app = express();
 const PORT = process.env.PORT || 3000;
+const notificationService = new NotificationService();
 
 // YouTube API configuration
 const youtube = google.youtube({
@@ -191,6 +193,31 @@ app.post('/api/search', authenticate, checkBalance(5), async (req, res) => {
         }
 
         await client.query('COMMIT');
+        
+        // 发送4种渠道的通知
+        const notificationTitle = '✅ YouTube数据获取成功';
+        const notificationContent = `### YouTube数据获取报告 - 按关键字搜索
+
+**会员**: ${req.user.email}
+**搜索关键词**: ${keyword}
+**获取方式**: 🔍 按关键字搜索
+**处理视频数**: ${videosToInsert.length}
+**新增/更新记录**: ${updatedOrInsertedCount}
+**扣费金额**: ¥${cost}
+**剩余余额**: ¥${balanceAfter}
+**完成时间**: ${new Date().toLocaleString('zh-CN')}
+
+📊 **数据详情**:
+- 搜索到播放列表: ${playlists.length} 个
+- 获取视频总数: ${allVideoIds.size} 个
+- 成功处理: ${videosToInsert.length} 个
+
+🎉 数据已成功保存到数据库，可以在主页面查看和筛选。`;
+
+        // 异步发送通知（不阻塞响应）
+        notificationService.sendAllChannels(notificationTitle, notificationContent).catch(err => {
+            console.error('发送通知失败:', err);
+        });
         
         res.status(201).json({ 
             message: `搜索完成！共处理 ${videosToInsert.length} 条视频，新增或更新了 ${updatedOrInsertedCount} 条记录。已扣费 ${cost} 元。`,
@@ -388,6 +415,33 @@ app.post('/api/fetch-by-channels', authenticate, checkBalance(5), async (req, re
         }
 
         await client.query('COMMIT');
+        
+        // 发送4种渠道的通知
+        const notificationTitle = '✅ YouTube数据获取成功';
+        const channelList = uniqueChannelIds.join(', ').substring(0, 100); // 限制长度
+        const notificationContent = `### YouTube数据获取报告 - 按频道获取
+
+**会员**: ${req.user.email}
+**获取方式**: 📺 按指定频道获取
+**频道标识**: ${identifiers.join(', ')}
+**解析频道数**: ${uniqueChannelIds.length}
+**处理视频数**: ${videosToInsert.length}
+**新增/更新记录**: ${updatedOrInsertedCount}
+**扣费金额**: ¥${cost}
+**剩余余额**: ¥${balanceAfter}
+**完成时间**: ${new Date().toLocaleString('zh-CN')}
+
+📊 **数据详情**:
+- 频道ID: ${channelList}${uniqueChannelIds.length > 1 ? '...' : ''}
+- 获取视频总数: ${allVideoIds.size} 个
+- 成功处理: ${videosToInsert.length} 个
+
+🎉 数据已成功保存到数据库，可以在主页面查看和筛选。`;
+
+        // 异步发送通知（不阻塞响应）
+        notificationService.sendAllChannels(notificationTitle, notificationContent).catch(err => {
+            console.error('发送通知失败:', err);
+        });
         
         res.status(201).json({ 
             message: `频道视频获取完成！共处理 ${videosToInsert.length} 条视频，新增或更新了 ${updatedOrInsertedCount} 条记录。已扣费 ${cost} 元。`,

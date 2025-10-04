@@ -1470,7 +1470,7 @@
             let html = '';
             
             // 上一页
-            html += `<button onclick="fetchVideos(${currentPage - 1})" 
+            html += `<button id="prevPageBtn" 
                             ${currentPage === 1 ? 'disabled' : ''} 
                             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
                         上一页
@@ -1482,13 +1482,31 @@
                     </span>`;
             
             // 下一页
-            html += `<button onclick="fetchVideos(${currentPage + 1})" 
+            html += `<button id="nextPageBtn" 
                             ${currentPage === pagination.totalPages ? 'disabled' : ''} 
                             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
                         下一页
                     </button>`;
             
             container.innerHTML = html;
+            
+            // 添加事件监听器
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            
+            if (prevBtn && !prevBtn.disabled) {
+                prevBtn.addEventListener('click', function() {
+                    console.log('点击上一页，从', currentPage, '到', currentPage - 1);
+                    fetchVideos(currentPage - 1);
+                });
+            }
+            
+            if (nextBtn && !nextBtn.disabled) {
+                nextBtn.addEventListener('click', function() {
+                    console.log('点击下一页，从', currentPage, '到', currentPage + 1);
+                    fetchVideos(currentPage + 1);
+                });
+            }
         }
 
         // ========== 筛选和排序 ==========

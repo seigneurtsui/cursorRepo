@@ -1537,9 +1537,9 @@
             }
             
             // 全选/取消全选
-            const selectAllCheckbox = document.getElementById('channel-select-all');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.addEventListener('change', function(e) {
+            const normalSelectAllCheckbox = document.getElementById('channel-select-all');
+            if (normalSelectAllCheckbox) {
+                normalSelectAllCheckbox.addEventListener('change', function(e) {
                     if (e.target.checked) {
                         selectedChannels = [...channelsData];
                     } else {
@@ -1612,9 +1612,9 @@
             }
             
             // 全选/取消全选
-            const selectAllCheckbox = document.getElementById('admin-channel-select-all');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.addEventListener('change', function(e) {
+            const adminSelectAllCheckbox = document.getElementById('admin-channel-select-all');
+            if (adminSelectAllCheckbox) {
+                adminSelectAllCheckbox.addEventListener('change', function(e) {
                     if (e.target.checked) {
                         adminSelectedChannels = [...allChannelsData];
                     } else {

@@ -2442,6 +2442,9 @@
                 manualMode.style.display = 'none';
                 dropdownMode.style.display = 'block';
                 
+                // 初始化事件监听器
+                initFetchChannelEvents();
+                
                 // 加载频道列表
                 loadFetchChannelList();
             }
@@ -2563,8 +2566,16 @@
             alert(`功能开发中...\n将获取 ${fetchSelectedChannels_list.length} 个频道的数据`);
         }
         
+        // 初始化事件监听器标志
+        let fetchChannelEventsInitialized = false;
+        
         // 初始化事件监听器
-        (function initFetchChannelEvents() {
+        function initFetchChannelEvents() {
+            if (fetchChannelEventsInitialized) return;
+            fetchChannelEventsInitialized = true;
+            
+            console.log('🔧 初始化方式2频道选择事件监听器');
+            
             // 搜索功能
             const searchInput = document.getElementById('fetch-channel-search');
             if (searchInput) {
@@ -2627,7 +2638,7 @@
                     dropdown.classList.add('hidden');
                 }
             });
-        })();
+        }
     </script>
 
 </body>

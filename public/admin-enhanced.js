@@ -150,7 +150,7 @@ function renderUsersTable() {
           <th onclick="sortUsers('id')" style="cursor: pointer;">ID ${sortIcon('id')}</th>
           <th onclick="sortUsers('email')" style="cursor: pointer;">邮箱 ${sortIcon('email')}</th>
           <th onclick="sortUsers('username')" style="cursor: pointer;">用户名 ${sortIcon('username')}</th>
-          <th>余额</th>
+          <th onclick="sortUsers('balance')" style="cursor: pointer;">余额 ${sortIcon('balance')}</th>
           <th onclick="sortUsers('is_active')" style="cursor: pointer;">状态 ${sortIcon('is_active')}</th>
           <th onclick="sortUsers('phone')" style="cursor: pointer;">手机 ${sortIcon('phone')}</th>
           <th onclick="sortUsers('created_at')" style="cursor: pointer;">注册时间 ${sortIcon('created_at')}</th>
@@ -166,7 +166,7 @@ function renderUsersTable() {
             <td>
               <span id="balance-${user.id}" style="color: #28a745; font-weight: 600;">¥${parseFloat(user.balance).toFixed(2)}</span>
               ${!user.is_admin ? `
-                <button onclick="adjustBalance(${user.id}, '${user.username}')" class="btn btn-sm" style="margin-left: 5px; padding: 2px 8px; font-size: 12px; background: #17a2b8; color: white;">💰</button>
+                <button onclick="event.stopPropagation(); adjustBalance(${user.id}, '${user.username}')" class="btn btn-sm" style="margin-left: 5px; padding: 2px 8px; font-size: 12px; background: #17a2b8; color: white;">💰</button>
               ` : ''}
             </td>
             <td>

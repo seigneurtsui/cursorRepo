@@ -2484,9 +2484,24 @@
         
         // 渲染频道列表
         function renderFetchChannelList(channels, searchTerm = '') {
+            console.log('🎨 renderFetchChannelList 开始渲染');
+            console.log('   - 频道数据:', channels);
+            console.log('   - 数据类型:', typeof channels, Array.isArray(channels));
+            console.log('   - 数组长度:', channels?.length);
+            
+            if (!channels || channels.length === 0) {
+                console.warn('⚠️ 频道数据为空！');
+                document.getElementById('fetch-channel-list').innerHTML = 
+                    '<li class="px-4 py-8 text-center text-gray-500">暂无频道数据，请先获取一些频道数据</li>';
+                return;
+            }
+            
             const filteredChannels = searchTerm 
                 ? channels.filter(ch => ch.toLowerCase().includes(searchTerm.toLowerCase()))
                 : channels;
+            
+            console.log('   - 过滤后数量:', filteredChannels.length);
+            console.log('   - 第一个频道:', filteredChannels[0]);
             
             const html = filteredChannels.map(channel => `
                 <li class="border-b border-gray-100 last:border-0">
@@ -2501,8 +2516,13 @@
                 </li>
             `).join('');
             
+            console.log('   - 生成的HTML长度:', html.length);
+            console.log('   - HTML片段预览:', html.substring(0, 200));
+            
             document.getElementById('fetch-channel-list').innerHTML = html || 
                 '<li class="px-4 py-8 text-center text-gray-500">无匹配频道</li>';
+            
+            console.log('✅ renderFetchChannelList 渲染完成');
         }
         
         // 切换频道选择

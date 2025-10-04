@@ -82,60 +82,32 @@
 
 
     <div class="container mx-auto p-4 md:p-8">
-        <header class="mb-8">
-            <!-- User Info Bar -->
-            <div class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 rounded-lg mb-4 flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <div>
-                        <div class="text-sm opacity-90">欢迎，<span id="headerUsername" class="font-semibold">加载中...</span></div>
-                        <div class="text-lg font-bold">💰 余额：¥<span id="headerBalance">0.00</span></div>
-                    </div>
-                    <div id="adminBadge" class="hidden bg-yellow-400 text-black px-3 py-1 rounded-full text-sm font-bold">
-                        👑 管理员
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="window.location.href='profile.html'" 
-                            class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg font-semibold transition">
-                        👤 会员中心
-                    </button>
-                    <button onclick="logout()" 
-                            class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg font-semibold transition">
-                        🚪 退出
-                    </button>
-                </div>
+        <header class="mb-8 flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800" data-i18n-key="main_title">YouTube 视频搜索与导出</h1>
+                <p class="text-gray-600 mt-2" data-i18n-key="main_subtitle">从 YouTube 搜索视频数据，存入数据库，然后进行展示、筛选和导出。</p>
             </div>
-            
-            <div class="flex justify-between items-start">
-                <div>
-                    <h1 class="text-3xl md:text-4xl font-bold text-gray-800" data-i18n-key="main_title">YouTube 视频搜索与导出</h1>
-                    <p class="text-gray-600 mt-2" data-i18n-key="main_subtitle">从 YouTube 搜索视频数据，存入数据库，然后进行展示、筛选和导出。</p>
-                </div>
-                <div>
-                    <label for="language-switcher" class="sr-only" data-i18n-key="language">语言</label>
-                    <select id="language-switcher" class="bg-white border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="en">English</option>
-                        <option value="fr">Français</option>
-                        <option value="es">Español</option>
-                        <option value="de">Deutsch</option>
-                        <option value="it">Italiano</option>
-                        <option value="ru">Русский</option>
-                        <option value="ja">日本語</option>
-                        <option value="ko">한국어</option>
-                        <option value="zh-CN">中文 (简体)</option>
-                        <option value="zh-TW">中文 (繁體)</option>
-                        <option value="hi">हिन्दी</option>
-                        <option value="th">ไทย</option>
-                    </select>
-                </div>
+            <div>
+                <label for="language-switcher" class="sr-only" data-i18n-key="language">语言</label>
+                <select id="language-switcher" class="bg-white border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                    <option value="ru">Русский</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="zh-CN">中文 (简体)</option>
+                    <option value="zh-TW">中文 (繁體)</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="th">ไทย</option>
+                </select>
             </div>
         </header>
 
         <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700 flex items-center justify-between">
-                <span data-i18n-key="fetch_data_title">1. 从 YouTube 获取数据</span>
-                <span class="text-sm font-normal text-red-600">💸 每次操作计费：5元人民币</span>
-            </h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-700" data-i18n-key="fetch_data_title">1. 从 YouTube 获取数据</h2>
             
             <div class="mb-4">
                 <div class="flex items-center space-x-4 border-b">
@@ -206,15 +178,6 @@
                     </button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Admin Only: Member Filter -->
-                    <div id="memberFilterContainer" class="hidden relative">
-                        <label for="member-filter" class="block text-sm font-medium text-gray-700 mb-1">👥 会员筛选（管理员）</label>
-                        <select id="member-filter" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">所有会员</option>
-                            <!-- Will be populated dynamically -->
-                        </select>
-                    </div>
-                    
                     <div class="relative">
                         <label for="channel-filter-btn" class="block text-sm font-medium text-gray-700 mb-1" data-i18n-key="publisher_label">发布者</label>
                         <button id="channel-filter-btn" class="w-full px-4 py-2 bg-white border border-gray-300 rounded-md text-left flex items-center justify-between">
@@ -309,110 +272,7 @@
     </div>
 
     <script>
-        const API_BASE_URL = '';
-        let currentUser = null;
-        let authToken = null;
-        
-        // Authentication check
-        async function checkAuth() {
-            authToken = localStorage.getItem('token');
-            if (!authToken) {
-                window.location.href = 'login.html';
-                return false;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Authentication failed');
-                }
-                
-                const result = await response.json();
-                if (result.success) {
-                    currentUser = result.user;
-                    updateUserUI();
-                    if (currentUser.is_admin) {
-                        loadMemberList();
-                    }
-                    return true;
-                }
-            } catch (error) {
-                console.error('Authentication error:', error);
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = 'login.html';
-                return false;
-            }
-        }
-        
-        // Update user UI
-        function updateUserUI() {
-            if (!currentUser) return;
-            
-            document.getElementById('headerUsername').textContent = currentUser.username;
-            document.getElementById('headerBalance').textContent = currentUser.balance.toFixed(2);
-            
-            if (currentUser.is_admin) {
-                document.getElementById('adminBadge').classList.remove('hidden');
-                document.getElementById('memberFilterContainer').classList.remove('hidden');
-            }
-        }
-        
-        // Logout
-        function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-        }
-        
-        // Load member list for admin
-        async function loadMemberList() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/admin/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (!response.ok) return;
-                
-                const result = await response.json();
-                if (result.success && result.users) {
-                    const memberFilter = document.getElementById('member-filter');
-                    result.users.forEach(user => {
-                        const option = document.createElement('option');
-                        option.value = user.id;
-                        option.textContent = `${user.username} (${user.email}) - ¥${parseFloat(user.balance).toFixed(2)}`;
-                        memberFilter.appendChild(option);
-                    });
-                    
-                    // Add change event listener
-                    memberFilter.addEventListener('change', () => {
-                        loadVideos();
-                    });
-                }
-            } catch (error) {
-                console.error('Failed to load member list:', error);
-            }
-        }
-        
-        // Authenticated fetch wrapper
-        async function authFetch(url, options = {}) {
-            if (!options.headers) {
-                options.headers = {};
-            }
-            options.headers['Authorization'] = `Bearer ${authToken}`;
-            return fetch(url, options);
-        }
-        
-        // Initialize authentication on page load
-        checkAuth();
-        
+        const API_BASE_URL = ''; 
         const dom = {
             fetchDataBtn: document.getElementById('fetch-data-btn'),
             channelInput: document.getElementById('channel-input'),
@@ -552,7 +412,7 @@
 
         const populateChannelFilter = async () => {
             try {
-                const response = await authFetch(`${API_BASE_URL || window.location.origin}/api/channels`);
+                const response = await fetch(`${API_BASE_URL || window.location.origin}/api/channels`);
                 if (!response.ok) return;
                 const channels = await response.json();
                 
@@ -592,7 +452,7 @@
 
         const populateChannelSelect = async () => {
             try {
-                const response = await authFetch(`${API_BASE_URL || window.location.origin}/api/unique-channels`);
+                const response = await fetch(`${API_BASE_URL || window.location.origin}/api/unique-channels`);
                  if (!response.ok) {
                     dom.channelSelectList.innerHTML = `<li class="px-3 py-2 text-gray-500" data-i18n-key="loading_data_error"></li>`;
                     return;
@@ -624,7 +484,7 @@
 
         const fetchInitialStats = async () => {
             try {
-                const response = await authFetch(`${API_BASE_URL || window.location.origin}/api/stats`);
+                const response = await fetch(`${API_BASE_URL || window.location.origin}/api/stats`);
                 if (!response.ok) return;
                 const { totalVideos } = await response.json();
                 state.totalItemsInDB = totalVideos;
@@ -650,14 +510,8 @@
                 channel: state.channel,
             });
 
-            // Add userId parameter for admin member filter
-            const memberFilter = document.getElementById('member-filter');
-            if (memberFilter && memberFilter.value) {
-                params.append('userId', memberFilter.value);
-            }
-            
             try {
-                const response = await authFetch(`${API_BASE_URL || window.location.origin}/api/videos-paginated?${params.toString()}`);
+                const response = await fetch(`${API_BASE_URL || window.location.origin}/api/videos-paginated?${params.toString()}`);
                 if (!response.ok) throw new Error('网络响应错误');
                 const result = await response.json();
                 
@@ -770,40 +624,21 @@
             toggleButtonLoading(dom.fetchDataBtn, true);
             
             try {
-                const response = await authFetch(`${API_BASE_URL || window.location.origin}${endpoint}`, {
+                const response = await fetch(`${API_BASE_URL || window.location.origin}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                 });
                 const result = await response.json();
-                if (!response.ok) {
-                    if (response.status === 402) {
-                        // Balance insufficient
-                        showStatus('status_fetch_error', true, { message: `余额不足！当前余额：¥${result.balance.toFixed(2)}，需要：¥${result.required}` });
-                        throw new Error(result.error);
-                    }
-                    throw new Error(result.error || result.message || '未知错误');
-                }
-                
-                // Show success with charge info
-                const chargeMessage = result.charged ? `（已扣费：¥${result.charged}）` : '';
+                if (!response.ok) throw new Error(result.error || result.message || '未知错误');
                 showStatus('status_fetch_success', false, { count: result.updatedOrInsertedCount || 0 });
-                
-                // Update user balance
-                if (result.charged && currentUser) {
-                    currentUser.balance -= result.charged;
-                    document.getElementById('headerBalance').textContent = currentUser.balance.toFixed(2);
-                }
-                
                 await fetchInitialStats();
                 await populateChannelFilter();
                 await populateChannelSelect();
                 handleFilterChange();
             } catch (error) {
                 console.error('获取数据失败:', error);
-                if (!error.message.includes('余额不足')) {
-                    showStatus('status_fetch_error', true, { message: error.message });
-                }
+                showStatus('status_fetch_error', true, { message: error.message });
             } finally {
                 toggleButtonLoading(dom.fetchDataBtn, false);
             }
@@ -1063,35 +898,7 @@
                 endDate: state.endDate,
                 channel: state.channel,
             });
-            
-            // Add userId parameter for admin member filter
-            const memberFilter = document.getElementById('member-filter');
-            if (memberFilter && memberFilter.value) {
-                params.append('userId', memberFilter.value);
-            }
-            
-            // Create a download link with auth token
-            const link = document.createElement('a');
-            link.href = `${API_BASE_URL || window.location.origin}/api/export?${params.toString()}`;
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            
-            // Use authFetch for authenticated download
-            authFetch(link.href)
-                .then(response => response.blob())
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    link.href = url;
-                    link.download = `youtube_export_${Date.now()}.xlsx`;
-                    link.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(link);
-                })
-                .catch(error => {
-                    console.error('导出失败:', error);
-                    alert('导出失败，请重试');
-                    document.body.removeChild(link);
-                });
+            window.location.href = `${API_BASE_URL || window.location.origin}/api/export?${params.toString()}`;
         });
 
         // --- Internationalization (i18n) ---

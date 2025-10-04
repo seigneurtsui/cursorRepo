@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会员中心 - YouTube 视频搜索与导出</title>
+    <script src="cdn.tailwindcss.com_3.4.17.js"></script>
+    <style>
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <div class="flex justify-end mb-4 gap-2">
+            <button onclick="window.location.href='index.html'" 
+                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                🏠 返回主页
+            </button>
+            <button onclick="logout()" 
+                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                🚪 退出登录
+            </button>
+        </div>
+
+        <div class="profile-header">
+            <h2 class="text-3xl font-bold mb-4">👤 会员中心</h2>
+            <div id="userInfo" class="space-y-2">
+                <div class="text-xl">欢迎，<span id="username" class="font-semibold">加载中...</span></div>
+                <div class="text-sm opacity-90">📧 <span id="email">加载中...</span></div>
+            </div>
+            <div class="mt-6 bg-white bg-opacity-20 rounded-xl p-6">
+                <div class="text-sm opacity-90 mb-2">💰 账户余额</div>
+                <div class="text-4xl font-bold">
+                    ¥ <span id="balance">0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="text-2xl font-bold mb-4 border-b pb-3">💳 充值说明</h3>
+            <div class="space-y-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="font-semibold text-lg mb-2">📊 计费标准</div>
+                    <ul class="list-disc list-inside space-y-1 text-gray-700">
+                        <li>每次点击"获取数据并入库"按钮：<span class="font-bold text-blue-600">5元人民币</span></li>
+                        <li>包括关键词搜索和频道搜索</li>
+                        <li>管理员账号免费使用</li>
+                    </ul>
+                </div>
+
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <div class="font-semibold text-lg mb-2">💡 充值方式</div>
+                    <p class="text-gray-700">
+                        如需充值，请联系管理员。管理员将在会员管理界面为您的账户充值。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="text-2xl font-bold mb-4 border-b pb-3">📝 账户信息</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-600">用户名</span>
+                    <span id="username2" class="font-semibold">加载中...</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-600">邮箱</span>
+                    <span id="email2" class="font-semibold">加载中...</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-600">手机号</span>
+                    <span id="phone" class="font-semibold">未设置</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-600">注册时间</span>
+                    <span id="createdAt" class="font-semibold">加载中...</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-gray-600">最后登录</span>
+                    <span id="lastLoginAt" class="font-semibold">加载中...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="text-2xl font-bold mb-4 border-b pb-3">🔒 修改密码</h3>
+            <form id="changePasswordForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">旧密码</label>
+                    <input type="password" id="oldPassword" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">新密码</label>
+                    <input type="password" id="newPassword" required minlength="8"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+                <button type="submit" 
+                        class="w-full py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-indigo-700">
+                    修改密码
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white font-semibold z-50 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+
+        async function loadUserInfo() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('获取用户信息失败');
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    const user = result.user;
+                    document.getElementById('username').textContent = user.username;
+                    document.getElementById('username2').textContent = user.username;
+                    document.getElementById('email').textContent = user.email;
+                    document.getElementById('email2').textContent = user.email;
+                    document.getElementById('balance').textContent = user.balance.toFixed(2);
+                    document.getElementById('phone').textContent = user.phone || '未设置';
+                    document.getElementById('createdAt').textContent = new Date(user.createdAt).toLocaleString('zh-CN');
+                    document.getElementById('lastLoginAt').textContent = user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('zh-CN') : '从未登录';
+                }
+            } catch (error) {
+                console.error('加载用户信息错误:', error);
+                showToast('加载用户信息失败', 'error');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+            }
+        }
+
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const token = localStorage.getItem('token');
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ oldPassword, newPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('密码修改成功！请重新登录', 'success');
+                    setTimeout(() => logout(), 2000);
+                } else {
+                    showToast(result.error || '密码修改失败', 'error');
+                }
+            } catch (error) {
+                console.error('修改密码错误:', error);
+                showToast('修改密码失败', 'error');
+            }
+            
+            document.getElementById('changePasswordForm').reset();
+        });
+
+        // Load user info on page load
+        loadUserInfo();
+    </script>
+</body>
+</html>

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理员后台 - 视频章节生成器</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
   <link rel="stylesheet" href="/public/styles.css">
   <style>
     .admin-container { max-width: 1200px; margin: 20px auto; padding: 20px; }
@@ -120,7 +121,47 @@
     <!-- 用户列表 -->
     <div class="card">
       <h3>👥 用户列表</h3>
-      <button class="btn btn-success" onclick="exportUsers()" style="margin-bottom: 15px;">📥 导出用户Excel</button>
+      
+      <!-- 搜索和筛选 -->
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">注册时间范围</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="date" id="userDateFrom" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              <span>至</span>
+              <input type="date" id="userDateTo" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">关键字搜索（邮箱/用户名）</label>
+            <input type="text" id="userKeyword" placeholder="输入邮箱或用户名..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" onclick="searchUsers()" style="flex: 1;">🔍 搜索</button>
+          <button class="btn btn-secondary" onclick="resetUserSearch()" style="flex: 1;">🔄 重置</button>
+          <button class="btn btn-success" onclick="exportFilteredUsers()">📥 导出筛选结果</button>
+        </div>
+      </div>
+      
+      <!-- 分页控制 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>每页显示：</span>
+          <select id="userPageSize" onchange="changeUserPageSize()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        <div id="userPagination" style="display: flex; gap: 5px;"></div>
+      </div>
+      
       <div id="usersTable" style="overflow-x: auto;">加载中...</div>
     </div>
 
@@ -133,6 +174,47 @@
     <!-- 最近交易 -->
     <div class="card">
       <h3>💳 最近交易</h3>
+      
+      <!-- 搜索和筛选 -->
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">交易时间范围</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="date" id="transactionDateFrom" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              <span>至</span>
+              <input type="date" id="transactionDateTo" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">关键字搜索（用户/类型/金额/套餐/支付）</label>
+            <input type="text" id="transactionKeyword" placeholder="输入关键字..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" onclick="searchTransactions()" style="flex: 1;">🔍 搜索</button>
+          <button class="btn btn-secondary" onclick="resetTransactionSearch()" style="flex: 1;">🔄 重置</button>
+          <button class="btn btn-success" onclick="exportFilteredTransactions()">📥 导出筛选结果</button>
+        </div>
+      </div>
+      
+      <!-- 分页控制 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>每页显示：</span>
+          <select id="transactionPageSize" onchange="changeTransactionPageSize()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        <div id="transactionPagination" style="display: flex; gap: 5px;"></div>
+      </div>
+      
       <div id="transactionsTable" style="overflow-x: auto;">加载中...</div>
     </div>
 
@@ -146,18 +228,52 @@
     <!-- 通知记录管理 -->
     <div class="card">
       <h3>📋 通知记录管理</h3>
+      
+      <!-- 搜索和筛选 -->
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">发送时间范围</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="date" id="logDateFrom" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              <span>至</span>
+              <input type="date" id="logDateTo" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">关键字搜索（用户/类型/渠道/标题/状态）</label>
+            <input type="text" id="logKeyword" placeholder="输入关键字..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" onclick="searchLogs()" style="flex: 1;">🔍 搜索</button>
+          <button class="btn btn-secondary" onclick="resetLogSearch()" style="flex: 1;">🔄 重置</button>
+          <button class="btn btn-success" onclick="exportFilteredLogs()">📥 导出筛选结果</button>
+        </div>
+      </div>
+      
+      <!-- 分页控制 -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <p style="color: #666; font-size: 14px; margin: 0;">查看和导出所有发送给会员的通知记录</p>
-        <button class="btn btn-success" onclick="exportNotificationLogs()">
-          📥 导出通知记录Excel
-        </button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>每页显示：</span>
+          <select id="logPageSize" onchange="changeLogPageSize()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        <div id="logPagination" style="display: flex; gap: 5px;"></div>
       </div>
-      <div id="notificationLogsList" style="max-height: 400px; overflow-y: auto;">
-        <div style="text-align: center; padding: 20px; color: #999;">点击上方按钮导出Excel查看通知记录</div>
-      </div>
+      
+      <div id="notificationLogsList" style="overflow-x: auto;"></div>
     </div>
   </div>
 
+  <script src="/public/admin-enhanced.js"></script>
   <script>
     const API_BASE = window.location.origin;
     let currentUser = null;
@@ -186,18 +302,20 @@
         document.getElementById('adminName').textContent = currentUser.username;
 
         // Load users
-        const usersResponse = await fetch(`${API_BASE}/api/auth/admin/users?limit=50`, {
+        const usersResponse = await fetch(`${API_BASE}/api/auth/admin/users`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const usersResult = await usersResponse.json();
 
         if (usersResult.success) {
           document.getElementById('totalUsers').textContent = usersResult.users.length;
-          renderUsersTable(usersResult.users);
+          allUsers = usersResult.users;
+          filteredUsers = [...allUsers];
+          renderUsersTable();
         }
 
         // Load transactions
-        const transResponse = await fetch(`${API_BASE}/api/auth/admin/transactions?limit=20`, {
+        const transResponse = await fetch(`${API_BASE}/api/auth/admin/transactions`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const transResult = await transResponse.json();
@@ -208,7 +326,9 @@
             .filter(t => t.type === 'recharge')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);
           document.getElementById('totalRevenue').textContent = `¥${totalRevenue.toFixed(2)}`;
-          renderTransactionsTable(transResult.transactions);
+          allTransactions = transResult.transactions;
+          filteredTransactions = [...allTransactions];
+          renderTransactionsTable();
         }
 
         // Load payment plans
@@ -233,58 +353,7 @@
       }
     }
 
-    function renderUsersTable(users) {
-      const html = `
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>邮箱</th>
-              <th>用户名</th>
-              <th>余额</th>
-              <th>状态</th>
-              <th>手机</th>
-              <th>注册时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${users.map(u => `
-              <tr id="user-row-${u.id}">
-                <td>${u.id}</td>
-                <td>${u.email}</td>
-                <td>${u.username}${u.is_admin ? ' <span style="color: #dc3545; font-weight: bold;">🔑管理员</span>' : ''}</td>
-                <td>
-                  <span id="balance-${u.id}" style="color: #28a745; font-weight: 600;">¥${parseFloat(u.balance).toFixed(2)}</span>
-                  <button onclick="adjustBalance(${u.id}, '${u.username}')" class="btn btn-sm" style="margin-left: 5px; padding: 2px 8px; font-size: 12px; background: #17a2b8; color: white;">💰</button>
-                </td>
-                <td>
-                  <span style="color: ${u.is_active ? '#28a745' : '#dc3545'}; font-weight: bold;">
-                    ${u.is_active ? '✅ 激活' : '❌ 禁用'}
-                  </span>
-                </td>
-                <td>${u.phone || '-'}</td>
-                <td>${new Date(u.created_at).toLocaleString('zh-CN')}</td>
-                <td>
-                  ${!u.is_admin ? `
-                    <button onclick="toggleUserStatus(${u.id}, ${u.is_active})" class="btn btn-sm" style="background: ${u.is_active ? '#ffc107' : '#28a745'}; color: white; margin-right: 5px; padding: 4px 10px; font-size: 12px;">
-                      ${u.is_active ? '🚫 禁用' : '✅ 激活'}
-                    </button>
-                    <button onclick="resetUserPassword(${u.id}, '${u.username}')" class="btn btn-sm" style="background: #6c757d; color: white; margin-right: 5px; padding: 4px 10px; font-size: 12px;">
-                      🔑 重置密码
-                    </button>
-                    <button onclick="deleteUser(${u.id}, '${u.username}')" class="btn btn-sm" style="background: #dc3545; color: white; padding: 4px 10px; font-size: 12px;">
-                      🗑️ 删除
-                    </button>
-                  ` : '<span style="color: #999; font-size: 12px;">无法操作</span>'}
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-      document.getElementById('usersTable').innerHTML = html;
-    }
+    // renderUsersTable now in admin-enhanced.js
 
     function renderPlansTable(plans) {
       const html = `
@@ -326,79 +395,9 @@
       document.getElementById('plansTable').innerHTML = html;
     }
 
-    function renderTransactionsTable(transactions) {
-      const html = `
-        <table>
-          <thead>
-            <tr>
-              <th>时间</th>
-              <th>用户</th>
-              <th>类型</th>
-              <th>金额</th>
-              <th>套餐</th>
-              <th>支付方式</th>
-              <th>状态</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${transactions.map(t => {
-              // Determine transaction type display
-              let typeDisplay, typeColor, amountPrefix;
-              if (t.type === 'recharge' || t.type === 'admin_credit') {
-                typeDisplay = t.type === 'admin_credit' ? '🔧 管理员调整' : '💰 充值';
-                typeColor = '#28a745';
-                amountPrefix = '+';
-              } else if (t.type === 'admin_debit') {
-                typeDisplay = '🔧 管理员调整';
-                typeColor = '#dc3545';
-                amountPrefix = '-';
-              } else {
-                typeDisplay = '📝 消费';
-                typeColor = '#dc3545';
-                amountPrefix = '-';
-              }
-              
-              return `
-              <tr>
-                <td>${new Date(t.created_at).toLocaleString('zh-CN')}</td>
-                <td>${t.username} (${t.email})</td>
-                <td>${typeDisplay}</td>
-                <td style="color: ${typeColor}; font-weight: 600;">
-                  ${amountPrefix}¥${parseFloat(t.amount).toFixed(2)}
-                </td>
-                <td>${t.plan_name || (t.description ? '管理员操作' : '-')}</td>
-                <td>${t.payment_method || '-'}</td>
-                <td>${t.status === 'completed' ? '✅ 完成' : '⏳ 处理中'}</td>
-              </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      `;
-      document.getElementById('transactionsTable').innerHTML = html;
-    }
+    // renderTransactionsTable now in admin-enhanced.js
 
-    async function exportUsers() {
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(`${API_BASE}/api/auth/admin/export-users`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `users_${Date.now()}.xlsx`;
-        link.click();
-        URL.revokeObjectURL(url);
-
-        alert('导出成功！');
-      } catch (error) {
-        console.error('导出失败:', error);
-        alert('导出失败');
-      }
-    }
+    // exportUsers now replaced by exportFilteredUsers in admin-enhanced.js
 
     // Toggle user active status
     async function toggleUserStatus(userId, currentStatus) {

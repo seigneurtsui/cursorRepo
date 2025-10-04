@@ -1555,9 +1555,9 @@
             if (clearBtn) {
                 clearBtn.addEventListener('click', function() {
                     selectedChannels = [];
-                    const selectAllCheckbox = document.getElementById('channel-select-all');
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.checked = false;
+                    const checkbox = document.getElementById('channel-select-all');
+                    if (checkbox) {
+                        checkbox.checked = false;
                     }
                     renderChannelList(channelsData);
                     updateChannelUI();
@@ -1626,13 +1626,13 @@
             }
             
             // 清空选择
-            const clearBtn = document.getElementById('admin-channel-clear-selection');
-            if (clearBtn) {
-                clearBtn.addEventListener('click', function() {
+            const adminClearBtn = document.getElementById('admin-channel-clear-selection');
+            if (adminClearBtn) {
+                adminClearBtn.addEventListener('click', function() {
                     adminSelectedChannels = [];
-                    const selectAllCheckbox = document.getElementById('admin-channel-select-all');
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.checked = false;
+                    const checkbox = document.getElementById('admin-channel-select-all');
+                    if (checkbox) {
+                        checkbox.checked = false;
                     }
                     renderAdminChannelList(allChannelsData);
                     updateAdminChannelUI();

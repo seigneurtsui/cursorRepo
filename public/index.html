@@ -436,7 +436,9 @@
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                         </div>
-                        <div>
+                        
+                        <!-- 普通用户的频道筛选（单选）-->
+                        <div id="normalChannelFilter">
                             <label class="block text-sm font-medium text-gray-700 mb-1">频道筛选</label>
                             <select 
                                 id="channelFilter" 
@@ -444,6 +446,60 @@
                             >
                                 <option value="">全部频道</option>
                             </select>
+                        </div>
+                        
+                        <!-- 管理员的频道筛选（多选，带搜索）-->
+                        <div id="adminChannelFilter" class="relative" style="display: none;">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                🎬 频道筛选 (管理员)
+                            </label>
+                            <button id="admin-channel-filter-btn" 
+                                    class="w-full px-4 py-2 bg-white border-2 border-amber-400 rounded-md text-left flex items-center justify-between hover:border-amber-500 transition">
+                                <span id="admin-channel-filter-text" class="truncate text-sm">
+                                    所有频道 (0)
+                                </span>
+                                <svg class="h-5 w-5 text-amber-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            
+                            <!-- 下拉菜单 -->
+                            <div id="admin-channel-dropdown" class="absolute z-10 w-full mt-1 bg-white border-2 border-amber-400 rounded-md shadow-xl hidden" style="max-height: 400px;">
+                                <!-- 搜索框 -->
+                                <div class="p-3 border-b border-gray-200 bg-amber-50">
+                                    <div class="relative">
+                                        <input type="text" id="admin-channel-search" 
+                                               placeholder="搜索频道名称..." 
+                                               class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                        <button id="clear-admin-channel-search" class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 hidden">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 全选/取消全选 -->
+                                <div class="p-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="admin-channel-select-all" class="mr-2 h-4 w-4 text-amber-600 rounded cursor-pointer">
+                                        <span class="text-sm font-medium text-gray-700">全选 / 取消全选</span>
+                                    </label>
+                                    <button id="admin-channel-clear-selection" class="text-xs text-amber-600 hover:text-amber-700 font-medium">
+                                        清空选择
+                                    </button>
+                                </div>
+                                
+                                <!-- 频道列表 -->
+                                <ul id="admin-channel-list" class="overflow-y-auto" style="max-height: 250px;">
+                                    <li class="px-4 py-8 text-center text-gray-500">加载中...</li>
+                                </ul>
+                                
+                                <!-- 底部统计 -->
+                                <div class="p-3 border-t border-gray-200 bg-amber-50 text-sm text-gray-600">
+                                    已选择 <span id="admin-selected-count" class="font-bold text-amber-600">0</span> 个频道
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">起始日期</label>
@@ -557,6 +613,11 @@
         let currentLimit = 9;
         let currentSortBy = 'published_at';
         let currentSortOrder = 'DESC';
+        
+        // 管理员频道筛选
+        let adminSelectedChannels = [];
+        let allChannelsData = [];
+        let currentChannelFilter = '';
 
         // ========== 页面加载初始化 ==========
         document.addEventListener('DOMContentLoaded', async function() {
@@ -597,6 +658,11 @@
                     document.getElementById('adminBtn').style.display = 'inline-block';
                     document.getElementById('adminControls').style.display = 'block';
                     await loadUserList();
+                    
+                    // 显示管理员频道筛选，隐藏普通频道筛选
+                    document.getElementById('normalChannelFilter').style.display = 'none';
+                    document.getElementById('adminChannelFilter').style.display = 'block';
+                    await loadAdminChannelFilter();
                 }
                 
                 // 加载数据
@@ -1111,6 +1177,165 @@
                 alert('获取失败: ' + err.message);
             }
         }
+
+        // ==================== 管理员频道筛选功能 ====================
+        
+        async function loadAdminChannelFilter() {
+            if (!currentUser || !currentUser.isAdmin) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/unique-channels', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    console.error('加载频道列表失败');
+                    return;
+                }
+                
+                const channels = await response.json();
+                allChannelsData = channels;
+                renderAdminChannelList(channels);
+            } catch (error) {
+                console.error('加载频道列表失败:', error);
+            }
+        }
+
+        function renderAdminChannelList(channels, searchTerm = '') {
+            const filteredChannels = searchTerm 
+                ? channels.filter(ch => ch.toLowerCase().includes(searchTerm.toLowerCase()))
+                : channels;
+            
+            const html = filteredChannels.map(channel => `
+                <li class="border-b border-gray-100 last:border-0">
+                    <label class="flex items-center px-4 py-2.5 hover:bg-amber-50 cursor-pointer transition">
+                        <input type="checkbox" 
+                               value="${channel.replace(/"/g, '&quot;')}" 
+                               ${adminSelectedChannels.includes(channel) ? 'checked' : ''}
+                               onchange="toggleAdminChannel('${channel.replace(/'/g, "\\'")}')"
+                               class="mr-3 h-4 w-4 text-amber-600 rounded cursor-pointer">
+                        <span class="text-sm">${channel}</span>
+                    </label>
+                </li>
+            `).join('');
+            
+            document.getElementById('admin-channel-list').innerHTML = html || 
+                '<li class="px-4 py-8 text-center text-gray-500">无匹配频道</li>';
+        }
+
+        function toggleAdminChannel(channel) {
+            const index = adminSelectedChannels.indexOf(channel);
+            if (index > -1) {
+                adminSelectedChannels.splice(index, 1);
+            } else {
+                adminSelectedChannels.push(channel);
+            }
+            updateAdminChannelUI();
+        }
+
+        function updateAdminChannelUI() {
+            const count = adminSelectedChannels.length;
+            const total = allChannelsData.length;
+            
+            document.getElementById('admin-selected-count').textContent = count;
+            
+            let text = '';
+            if (count === 0) {
+                text = `所有频道 (${total})`;
+            } else if (count === total) {
+                text = `全部频道 (${count})`;
+            } else {
+                text = `已选 ${count} 个频道`;
+            }
+            document.getElementById('admin-channel-filter-text').textContent = text;
+            
+            // 更新全选checkbox状态
+            const selectAllCheckbox = document.getElementById('admin-channel-select-all');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = count === total && count > 0;
+            }
+            
+            // 应用筛选到视频列表
+            currentChannelFilter = adminSelectedChannels.join(',');
+            applyFilters();
+        }
+
+        // 事件监听器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 切换下拉菜单
+            const adminChannelBtn = document.getElementById('admin-channel-filter-btn');
+            if (adminChannelBtn) {
+                adminChannelBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const dropdown = document.getElementById('admin-channel-dropdown');
+                    dropdown.classList.toggle('hidden');
+                });
+            }
+            
+            // 全选/取消全选
+            const selectAllCheckbox = document.getElementById('admin-channel-select-all');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function(e) {
+                    if (e.target.checked) {
+                        adminSelectedChannels = [...allChannelsData];
+                    } else {
+                        adminSelectedChannels = [];
+                    }
+                    renderAdminChannelList(allChannelsData);
+                    updateAdminChannelUI();
+                });
+            }
+            
+            // 清空选择
+            const clearBtn = document.getElementById('admin-channel-clear-selection');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    adminSelectedChannels = [];
+                    const selectAllCheckbox = document.getElementById('admin-channel-select-all');
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.checked = false;
+                    }
+                    renderAdminChannelList(allChannelsData);
+                    updateAdminChannelUI();
+                });
+            }
+            
+            // 搜索功能
+            const searchInput = document.getElementById('admin-channel-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.trim();
+                    renderAdminChannelList(allChannelsData, searchTerm);
+                    
+                    const clearSearchBtn = document.getElementById('clear-admin-channel-search');
+                    if (clearSearchBtn) {
+                        clearSearchBtn.classList.toggle('hidden', !searchTerm);
+                    }
+                });
+            }
+            
+            // 清除搜索
+            const clearSearchBtn = document.getElementById('clear-admin-channel-search');
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    const searchInput = document.getElementById('admin-channel-search');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        searchInput.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+            
+            // 点击外部关闭下拉菜单
+            document.addEventListener('click', function(e) {
+                const btn = document.getElementById('admin-channel-filter-btn');
+                const dropdown = document.getElementById('admin-channel-dropdown');
+                if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        });
     </script>
 
 </body>

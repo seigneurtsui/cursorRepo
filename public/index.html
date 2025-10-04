@@ -923,6 +923,13 @@
         }
 
         function renderChannelList(channels, searchTerm = '') {
+            // 安全检查：确保元素存在
+            const channelListElement = document.getElementById('channel-list');
+            if (!channelListElement) {
+                console.warn('channel-list element not found, skipping render');
+                return;
+            }
+            
             const filteredChannels = searchTerm 
                 ? channels.filter(ch => {
                     const remark = channelRemarks[ch] || '';
@@ -958,7 +965,7 @@
                 </li>
             `}).join('');
             
-            document.getElementById('channel-list').innerHTML = html || 
+            channelListElement.innerHTML = html || 
                 '<li class="px-4 py-8 text-center text-gray-500">无匹配频道</li>';
         }
 
@@ -976,17 +983,25 @@
             const count = selectedChannels.length;
             const total = channelsData.length;
             
-            document.getElementById('selected-count').textContent = count;
+            // 安全检查：确保元素存在
+            const selectedCountElement = document.getElementById('selected-count');
+            const filterTextElement = document.getElementById('channel-filter-text');
             
-            let text = '';
-            if (count === 0) {
-                text = `所有频道 (${total})`;
-            } else if (count === total) {
-                text = `全部频道 (${count})`;
-            } else {
-                text = `已选 ${count} 个频道`;
+            if (selectedCountElement) {
+                selectedCountElement.textContent = count;
             }
-            document.getElementById('channel-filter-text').textContent = text;
+            
+            if (filterTextElement) {
+                let text = '';
+                if (count === 0) {
+                    text = `所有频道 (${total})`;
+                } else if (count === total) {
+                    text = `全部频道 (${count})`;
+                } else {
+                    text = `已选 ${count} 个频道`;
+                }
+                filterTextElement.textContent = text;
+            }
             
             // 更新全选checkbox状态
             const selectAllCheckbox = document.getElementById('channel-select-all');
@@ -1186,20 +1201,33 @@
             // 重置频道筛选
             selectedChannels = [];
             adminSelectedChannels = [];
-            updateChannelUI();
-            if (currentUser && currentUser.isAdmin && document.getElementById('admin-channel-select-all')) {
-                document.getElementById('admin-channel-select-all').checked = false;
-                renderAdminChannelList(allChannelsData);
-            }
-            if (document.getElementById('channel-select-all')) {
-                document.getElementById('channel-select-all').checked = false;
+            
+            // 管理员：重置管理员频道筛选
+            if (currentUser && currentUser.isAdmin) {
+                const adminSelectAll = document.getElementById('admin-channel-select-all');
+                if (adminSelectAll) {
+                    adminSelectAll.checked = false;
+                }
+                if (typeof renderAdminChannelList === 'function') {
+                    renderAdminChannelList(allChannelsData);
+                }
+                updateAdminChannelUI();
+            } else {
+                // 普通用户：重置普通频道筛选
+                const normalSelectAll = document.getElementById('channel-select-all');
+                if (normalSelectAll) {
+                    normalSelectAll.checked = false;
+                }
                 renderChannelList(channelsData);
+                updateChannelUI();
             }
             
             currentFilterUserId = '';
-            if (document.getElementById('userFilter')) {
-                document.getElementById('userFilter').value = '';
+            const userFilter = document.getElementById('userFilter');
+            if (userFilter) {
+                userFilter.value = '';
             }
+            
             applyFilters();
         }
 

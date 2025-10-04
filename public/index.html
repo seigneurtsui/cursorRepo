@@ -2566,7 +2566,30 @@
         // 切换下拉菜单
         function toggleFetchChannelDropdown() {
             const dropdown = document.getElementById('fetch-channel-dropdown');
+            
+            // 先关闭所有其他下拉菜单，避免重叠
+            closeAllOtherDropdowns('fetch-channel-dropdown');
+            
             dropdown.classList.toggle('hidden');
+        }
+        
+        // 关闭所有其他下拉菜单
+        function closeAllOtherDropdowns(exceptId) {
+            const allDropdowns = [
+                'channel-dropdown',
+                'admin-channel-dropdown',
+                'admin-member-dropdown',
+                'fetch-channel-dropdown'
+            ];
+            
+            allDropdowns.forEach(id => {
+                if (id !== exceptId) {
+                    const dropdown = document.getElementById(id);
+                    if (dropdown) {
+                        dropdown.classList.add('hidden');
+                    }
+                }
+            });
         }
         
         // 获取选中频道的数据

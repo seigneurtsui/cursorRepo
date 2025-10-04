@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员后台 - 视频章节生成器</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+  <link rel="stylesheet" href="/public/styles.css">
+  <style>
+    .admin-container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+    .admin-header { background: #343a40; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .card h3 { margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    table th, table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    table th { background: #f8f9fa; font-weight: 600; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <div class="admin-header">
+      <div>
+        <h2>🔧 管理员后台</h2>
+        <div>管理员：<span id="adminName">加载中...</span></div>
+      </div>
+      <div>
+        <button class="btn btn-secondary" onclick="showChangePasswordModal()">🔑 修改密码</button>
+        <button class="btn btn-success" onclick="showCreateUserModal()">➕ 创建新账户</button>
+        <button class="btn btn-secondary" onclick="window.location.href='/'">返回主页</button>
+        <button class="btn btn-secondary" onclick="logout()">退出登录</button>
+      </div>
+    </div>
+
+    <!-- 修改密码模态框 -->
+    <div id="changePasswordModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
+        <h3 style="margin-top: 0;">🔑 修改管理员密码</h3>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">当前密码:</label>
+          <input type="password" id="currentPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="请输入当前密码">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">新密码:</label>
+          <input type="password" id="newPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="至少8位字符">
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 5px;">确认新密码:</label>
+          <input type="password" id="confirmPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="再次输入新密码">
+        </div>
+        <div style="text-align: right;">
+          <button class="btn btn-secondary" onclick="closeChangePasswordModal()" style="margin-right: 10px;">取消</button>
+          <button class="btn btn-primary" onclick="submitChangePassword()">确认修改</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建新账户模态框 -->
+    <div id="createUserModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-top: 0;">➕ 创建新用户账户</h3>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">邮箱地址 <span style="color: red;">*</span>:</label>
+          <input type="email" id="newUserEmail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="user@example.com" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">用户名 <span style="color: red;">*</span>:</label>
+          <input type="text" id="newUserUsername" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="用户名" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">初始密码 <span style="color: red;">*</span>:</label>
+          <input type="password" id="newUserPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="至少8位字符" required>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">初始余额 (元):</label>
+          <input type="number" id="newUserBalance" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="0" value="0" min="0" step="0.01">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">手机号:</label>
+          <input type="tel" id="newUserPhone" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="选填">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px;">
+            <input type="checkbox" id="newUserIsAdmin" style="margin-right: 5px;">
+            设为管理员
+          </label>
+        </div>
+        <div style="text-align: right; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="closeCreateUserModal()" style="margin-right: 10px;">取消</button>
+          <button class="btn btn-success" onclick="submitCreateUser()">创建账户</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="card">
+      <h3>📊 系统统计</h3>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 32px; font-weight: bold; color: #007bff;" id="totalUsers">0</div>
+          <div style="color: #666; margin-top: 5px;">总用户数</div>
+        </div>
+        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 32px; font-weight: bold; color: #28a745;" id="totalRevenue">¥0</div>
+          <div style="color: #666; margin-top: 5px;">总收入</div>
+        </div>
+        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 32px; font-weight: bold; color: #ffc107;" id="totalTransactions">0</div>
+          <div style="color: #666; margin-top: 5px;">总交易数</div>
+        </div>
+        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 32px; font-weight: bold; color: #17a2b8;" id="activeUsers">0</div>
+          <div style="color: #666; margin-top: 5px;">活跃用户</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户列表 -->
+    <div class="card">
+      <h3>👥 用户列表</h3>
+      
+      <!-- 搜索和筛选 -->
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">注册时间范围</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="date" id="userDateFrom" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              <span>至</span>
+              <input type="date" id="userDateTo" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">关键字搜索（邮箱/用户名）</label>
+            <input type="text" id="userKeyword" placeholder="输入邮箱或用户名..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" onclick="searchUsers()" style="flex: 1;">🔍 搜索</button>
+          <button class="btn btn-secondary" onclick="resetUserSearch()" style="flex: 1;">🔄 重置</button>
+          <button class="btn btn-success" onclick="exportFilteredUsers()">📥 导出筛选结果</button>
+        </div>
+      </div>
+      
+      <!-- 分页控制 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>每页显示：</span>
+          <select id="userPageSize" onchange="changeUserPageSize()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        <div id="userPagination" style="display: flex; gap: 5px;"></div>
+      </div>
+      
+      <div id="usersTable" style="overflow-x: auto;">加载中...</div>
+    </div>
+
+    <!-- 套餐管理 -->
+    <div class="card">
+      <h3>📦 套餐管理</h3>
+      <div id="plansTable" style="overflow-x: auto;">加载中...</div>
+    </div>
+
+    <!-- 最近交易 -->
+    <div class="card">
+      <h3>💳 最近交易</h3>
+      
+      <!-- 搜索和筛选 -->
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">交易时间范围</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="date" id="transactionDateFrom" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              <span>至</span>
+              <input type="date" id="transactionDateTo" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">关键字搜索（用户/类型/金额/套餐/支付）</label>
+            <input type="text" id="transactionKeyword" placeholder="输入关键字..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" onclick="searchTransactions()" style="flex: 1;">🔍 搜索</button>
+          <button class="btn btn-secondary" onclick="resetTransactionSearch()" style="flex: 1;">🔄 重置</button>
+          <button class="btn btn-success" onclick="exportFilteredTransactions()">📥 导出筛选结果</button>
+        </div>
+      </div>
+      
+      <!-- 分页控制 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>每页显示：</span>
+          <select id="transactionPageSize" onchange="changeTransactionPageSize()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        <div id="transactionPagination" style="display: flex; gap: 5px;"></div>
+      </div>
+      
+      <div id="transactionsTable" style="overflow-x: auto;">加载中...</div>
+    </div>
+
+    <!-- 通知渠道管理 -->
+    <div class="card">
+      <h3>📢 通知渠道管理</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 15px;">控制会员可以使用的通知渠道</p>
+      <div id="channelControlList">加载中...</div>
+    </div>
+
+    <!-- 通知记录管理 -->
+    <div class="card">
+      <h3>📋 通知记录管理</h3>
+      
+      <!-- 搜索和筛选 -->
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">发送时间范围</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="date" id="logDateFrom" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+              <span>至</span>
+              <input type="date" id="logDateTo" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">关键字搜索（用户/类型/渠道/标题/状态）</label>
+            <input type="text" id="logKeyword" placeholder="输入关键字..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" onclick="searchLogs()" style="flex: 1;">🔍 搜索</button>
+          <button class="btn btn-secondary" onclick="resetLogSearch()" style="flex: 1;">🔄 重置</button>
+          <button class="btn btn-success" onclick="exportFilteredLogs()">📥 导出筛选结果</button>
+        </div>
+      </div>
+      
+      <!-- 分页控制 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>每页显示：</span>
+          <select id="logPageSize" onchange="changeLogPageSize()" style="padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        <div id="logPagination" style="display: flex; gap: 5px;"></div>
+      </div>
+      
+      <div id="notificationLogsList" style="overflow-x: auto;"></div>
+    </div>
+  </div>
+
+  <script src="/public/admin-enhanced.js"></script>
+  <script>
+    const API_BASE = window.location.origin;
+    let currentUser = null;
+
+    async function loadAdminData() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/public/login.html';
+        return;
+      }
+
+      try {
+        // Get current user
+        const userResponse = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const userResult = await userResponse.json();
+        
+        if (!userResult.success || !userResult.user.is_admin) {
+          alert('需要管理员权限');
+          window.location.href = '/';
+          return;
+        }
+
+        currentUser = userResult.user;
+        document.getElementById('adminName').textContent = currentUser.username;
+
+        // Load users
+        const usersResponse = await fetch(`${API_BASE}/api/auth/admin/users`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const usersResult = await usersResponse.json();
+
+        if (usersResult.success) {
+          document.getElementById('totalUsers').textContent = usersResult.users.length;
+          allUsers = usersResult.users;
+          filteredUsers = [...allUsers];
+          renderUsersTable();
+        }
+
+        // Load transactions
+        const transResponse = await fetch(`${API_BASE}/api/auth/admin/transactions`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const transResult = await transResponse.json();
+
+        if (transResult.success) {
+          document.getElementById('totalTransactions').textContent = transResult.transactions.length;
+          const totalRevenue = transResult.transactions
+            .filter(t => t.type === 'recharge')
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+          document.getElementById('totalRevenue').textContent = `¥${totalRevenue.toFixed(2)}`;
+          allTransactions = transResult.transactions;
+          filteredTransactions = [...allTransactions];
+          renderTransactionsTable();
+        }
+
+        // Load payment plans
+        const plansResponse = await fetch(`${API_BASE}/api/auth/payment-plans`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const plansResult = await plansResponse.json();
+
+        if (plansResult.success) {
+          renderPlansTable(plansResult.plans);
+        }
+
+        // Load notification channels
+        await loadChannelControls();
+        
+        // Load notification logs
+        await loadNotificationLogs();
+
+      } catch (error) {
+        console.error('加载数据失败:', error);
+        alert('加载数据失败');
+      }
+    }
+
+    // renderUsersTable now in admin-enhanced.js
+
+    function renderPlansTable(plans) {
+      const html = `
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>套餐名称</th>
+              <th>类型</th>
+              <th>价格</th>
+              <th>次数</th>
+              <th>天数</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${plans.map(p => `
+              <tr id="plan-row-${p.id}">
+                <td>${p.id}</td>
+                <td>${p.name}</td>
+                <td>
+                  ${p.type === 'per_use' ? '📝 按次' : p.type === 'monthly' ? '📅 月套餐' : '🎁 年套餐'}
+                </td>
+                <td>
+                  <span id="price-${p.id}" style="color: #28a745; font-weight: 600;">¥${parseFloat(p.price).toFixed(2)}</span>
+                </td>
+                <td>${p.usage_count || '-'}</td>
+                <td>${p.valid_days || '-'}</td>
+                <td>
+                  <button onclick="editPlan(${p.id}, '${p.name}', ${p.price})" class="btn btn-sm" style="background: #17a2b8; color: white; padding: 4px 10px; font-size: 12px;">
+                    ✏️ 编辑
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      document.getElementById('plansTable').innerHTML = html;
+    }
+
+    // renderTransactionsTable now in admin-enhanced.js
+
+    // exportUsers now replaced by exportFilteredUsers in admin-enhanced.js
+
+    // Toggle user active status
+    async function toggleUserStatus(userId, username, newStatus) {
+      const action = newStatus ? '激活' : '禁用';
+      const confirmMessage = newStatus 
+        ? `确定要激活此用户吗？\n\n用户: ${username}\n\n激活后该用户将可以正常登录系统。`
+        : `确定要禁用此用户吗？\n\n用户: ${username}\n\n禁用后该用户将无法登录系统。`;
+      
+      if (!confirm(confirmMessage)) return;
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/admin/users/${userId}/toggle-status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ isActive: newStatus })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(`✅ 用户${action}成功`);
+          loadAdminData(); // Reload users
+        } else {
+          alert('❌ 操作失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('操作失败:', error);
+        alert('❌ 操作失败');
+      }
+    }
+
+    // Delete user
+    async function deleteUser(userId, username) {
+      if (!confirm(`⚠️ 危险操作 ⚠️\n\n确定要删除用户 "${username}" 吗？\n\n此操作将：\n• 删除用户账户\n• 删除该用户所有视频\n• 删除该用户所有交易记录\n\n此操作不可恢复！`)) return;
+
+      const confirmText = prompt('请输入 "DELETE" 确认删除操作：');
+      if (confirmText !== 'DELETE') {
+        alert('删除操作已取消');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/admin/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('用户删除成功！');
+          loadAdminData(); // Reload users
+        } else {
+          alert('删除失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('删除失败:', error);
+        alert('删除失败');
+      }
+    }
+
+    // Edit payment plan
+    async function editPlan(planId, planName, currentPrice) {
+      const newPrice = prompt(`💰 编辑套餐价格\n\n套餐: ${planName}\n当前价格: ¥${currentPrice}\n\n请输入新的价格（元）：`);
+      
+      if (newPrice === null) return; // User canceled
+      
+      const price = parseFloat(newPrice);
+      if (isNaN(price) || price < 0) {
+        alert('❌ 请输入有效的金额（≥0）');
+        return;
+      }
+
+      if (!confirm(`确认修改套餐价格？\n\n套餐: ${planName}\n原价格: ¥${currentPrice}\n新价格: ¥${price.toFixed(2)}`)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/admin/payment-plans/${planId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ price })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`✅ 套餐价格修改成功！\n\n套餐: ${planName}\n原价格: ¥${currentPrice}\n新价格: ¥${price.toFixed(2)}`);
+          document.getElementById(`price-${planId}`).textContent = `¥${price.toFixed(2)}`;
+        } else {
+          alert('❌ 修改失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('修改失败:', error);
+        alert('❌ 修改失败');
+      }
+    }
+
+    // Reset user password
+    async function resetUserPassword(userId, username) {
+      const newPassword = prompt(`🔑 重置用户密码\n\n用户: ${username}\n\n请输入新密码（至少8位字符）：`);
+      
+      if (!newPassword) return; // User canceled or empty
+      
+      if (newPassword.length < 8) {
+        alert('❌ 密码至少需要8位字符');
+        return;
+      }
+
+      if (!confirm(`确认重置密码？\n\n用户: ${username}\n新密码: ${newPassword}\n\n⚠️ 此操作将立即生效，用户需要使用新密码登录`)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/admin/users/${userId}/reset-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newPassword })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`✅ 密码重置成功！\n\n用户: ${username}\n新密码: ${newPassword}\n\n请通知用户使用新密码登录`);
+        } else {
+          alert('❌ 重置失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('重置密码失败:', error);
+        alert('❌ 重置密码失败');
+      }
+    }
+
+    // Adjust user balance
+    async function adjustBalance(userId, username) {
+      const currentBalance = document.getElementById(`balance-${userId}`).textContent.replace('¥', '');
+      const newBalance = prompt(`💰 调整用户余额\n\n用户: ${username}\n当前余额: ¥${currentBalance}\n\n请输入新的余额（元）：`);
+      
+      if (newBalance === null) return; // User canceled
+      
+      const balance = parseFloat(newBalance);
+      if (isNaN(balance) || balance < 0) {
+        alert('❌ 请输入有效的金额（≥0）');
+        return;
+      }
+
+      if (!confirm(`确认调整余额？\n\n用户: ${username}\n原余额: ¥${currentBalance}\n新余额: ¥${balance.toFixed(2)}\n\n差额: ${balance - parseFloat(currentBalance) >= 0 ? '+' : ''}¥${(balance - parseFloat(currentBalance)).toFixed(2)}`)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/admin/users/${userId}/adjust-balance`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ balance })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`✅ 余额调整成功！\n\n用户: ${username}\n原余额: ¥${currentBalance}\n新余额: ¥${balance.toFixed(2)}`);
+          document.getElementById(`balance-${userId}`).textContent = `¥${balance.toFixed(2)}`;
+          // Reload transactions to show the adjustment
+          loadAdminData();
+        } else {
+          alert('❌ 调整失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('调整失败:', error);
+        alert('❌ 调整失败');
+      }
+    }
+
+    // Show/hide change password modal
+    function showChangePasswordModal() {
+      document.getElementById('changePasswordModal').style.display = 'flex';
+    }
+
+    function closeChangePasswordModal() {
+      document.getElementById('changePasswordModal').style.display = 'none';
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+    }
+
+    // Submit change password
+    async function submitChangePassword() {
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        alert('请填写所有字段');
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        alert('新密码至少需要8位字符');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ 密码修改成功！请重新登录');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/public/login.html';
+        } else {
+          alert('❌ 密码修改失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('修改密码错误:', error);
+        alert('❌ 修改密码失败');
+      }
+    }
+
+    // Show/hide create user modal
+    function showCreateUserModal() {
+      document.getElementById('createUserModal').style.display = 'flex';
+    }
+
+    function closeCreateUserModal() {
+      document.getElementById('createUserModal').style.display = 'none';
+      document.getElementById('newUserEmail').value = '';
+      document.getElementById('newUserUsername').value = '';
+      document.getElementById('newUserPassword').value = '';
+      document.getElementById('newUserBalance').value = '0';
+      document.getElementById('newUserPhone').value = '';
+      document.getElementById('newUserIsAdmin').checked = false;
+    }
+
+    // Submit create user
+    async function submitCreateUser() {
+      const email = document.getElementById('newUserEmail').value.trim();
+      const username = document.getElementById('newUserUsername').value.trim();
+      const password = document.getElementById('newUserPassword').value;
+      const balance = parseFloat(document.getElementById('newUserBalance').value) || 0;
+      const phone = document.getElementById('newUserPhone').value.trim();
+      const isAdmin = document.getElementById('newUserIsAdmin').checked;
+
+      if (!email || !username || !password) {
+        alert('请填写必填字段（邮箱、用户名、密码）');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('邮箱格式不正确');
+        return;
+      }
+
+      if (password.length < 8) {
+        alert('密码至少需要8位字符');
+        return;
+      }
+
+      if (balance < 0) {
+        alert('初始余额不能为负数');
+        return;
+      }
+
+      if (!confirm(`确认创建新用户？\n\n邮箱: ${email}\n用户名: ${username}\n初始余额: ¥${balance.toFixed(2)}\n管理员: ${isAdmin ? '是' : '否'}`)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/api/auth/admin/create-user`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email,
+            username,
+            password,
+            balance,
+            phone: phone || null,
+            isAdmin
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`✅ 用户创建成功！\n\n邮箱: ${email}\n用户名: ${username}\n初始余额: ¥${balance.toFixed(2)}`);
+          closeCreateUserModal();
+          loadAdminData(); // Reload user list
+        } else {
+          alert('❌ 创建用户失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('创建用户错误:', error);
+        alert('❌ 创建用户失败');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/public/login.html';
+    }
+
+    // Toast notification helper
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#ffc107'};
+        color: white;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-size: 14px;
+        animation: slideIn 0.3s ease-out;
+      `;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 3000);
+    }
+    
+    // Add CSS animations
+    if (!document.getElementById('toast-styles')) {
+      const style = document.createElement('style');
+      style.id = 'toast-styles';
+      style.textContent = `
+        @keyframes slideIn {
+          from { transform: translateX(400px); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(400px); opacity: 0; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // ==================== Notification Channel Control ====================
+    
+    async function loadChannelControls() {
+      const token = localStorage.getItem('token');
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/channels`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const channels = await response.json();
+        
+        const html = channels.map(ch => `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+            <div>
+              <strong style="font-size: 16px;">${ch.description}</strong>
+              <div style="font-size: 12px; color: #999; margin-top: 3px;">渠道标识: ${ch.channel}</div>
+            </div>
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+              <span style="font-size: 14px; font-weight: 600; color: ${ch.enabled ? '#28a745' : '#dc3545'};">
+                ${ch.enabled ? '✅ 已启用' : '❌ 已禁用'}
+              </span>
+              <input type="checkbox" ${ch.enabled ? 'checked' : ''} 
+                     onchange="toggleChannel('${ch.channel}', this.checked)"
+                     style="width: 20px; height: 20px; cursor: pointer;">
+            </label>
+          </div>
+        `).join('');
+        
+        document.getElementById('channelControlList').innerHTML = html || '<div style="color: #999; text-align: center; padding: 20px;">暂无渠道</div>';
+      } catch (error) {
+        console.error('加载渠道控制失败:', error);
+        document.getElementById('channelControlList').innerHTML = '<div style="color: #dc3545; text-align: center; padding: 20px;">加载失败</div>';
+      }
+    }
+    
+    async function toggleChannel(channel, enabled) {
+      const token = localStorage.getItem('token');
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/channels/${channel}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ enabled })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(`✅ ${channel} 已${enabled ? '启用' : '禁用'}`);
+          await loadChannelControls();
+        } else {
+          alert('❌ 操作失败: ' + (result.error || '未知错误'));
+          await loadChannelControls();
+        }
+      } catch (error) {
+        console.error('切换渠道失败:', error);
+        alert('❌ 操作失败: ' + error.message);
+        await loadChannelControls();
+      }
+    }
+    
+    // ==================== Notification Logs ====================
+    
+    
+    async function exportNotificationLogs() {
+      const token = localStorage.getItem('token');
+      const btn = event.target;
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ 导出中...';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/export-logs`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          throw new Error('导出失败');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `notification_logs_${Date.now()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showToast('✅ 通知记录已导出');
+      } catch (error) {
+        console.error('导出通知记录失败:', error);
+        alert('❌ 导出失败: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+
+    loadAdminData();
+  </script>
+</body>
+</html>

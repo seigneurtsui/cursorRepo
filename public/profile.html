@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会员中心 - 视频章节生成器</title>
+  <link rel="stylesheet" href="/public/styles.css">
+  <script src="/public/payment-ijpay.js"></script>
+  <style>
+    .profile-container { max-width: 900px; margin: 20px auto; padding: 20px; }
+    .profile-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 20px; }
+    .balance-display { font-size: 48px; font-weight: bold; margin: 10px 0; }
+    .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .card h3 { margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+    .plan-card { border: 2px solid #ddd; padding: 20px; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+    .plan-card:hover { border-color: #007bff; transform: translateY(-2px); }
+    .plan-card.selected { border-color: #007bff; background: #f0f8ff; }
+    .plan-price { font-size: 32px; font-weight: bold; color: #007bff; margin: 10px 0; }
+    .payment-methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+    .payment-btn { padding: 12px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; transition: all 0.3s; text-align: center; }
+    .payment-btn:hover { border-color: #28a745; }
+    .payment-btn.selected { border-color: #28a745; background: #f0fff0; }
+    .btn-primary { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+    .btn-primary:hover { background: #0056b3; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3); }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .success-icon { color: #28a745; margin-right: 5px; }
+    .info-icon { color: #17a2b8; margin-right: 5px; }
+    .info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .nav-buttons { text-align: right; margin-bottom: 15px; }
+    .nav-buttons button { margin-left: 10px; padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="profile-container">
+    <div class="nav-buttons">
+      <button onclick="window.location.href='/'">🎬 返回主页</button>
+      <button onclick="logout()">🚪 退出登录</button>
+    </div>
+
+    <div class="profile-header">
+      <h2>👤 会员中心</h2>
+      <div id="userInfo">
+        <div style="font-size: 24px; margin-bottom: 10px; font-weight: 600;">欢迎回来，<span id="username">加载中...</span> 👋</div>
+        <div style="font-size: 14px; opacity: 0.9; display: flex; align-items: center; gap: 10px;">
+          <span>📧</span>
+          <span id="email">加载中...</span>
+        </div>
+      </div>
+      <div style="margin: 20px 0; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 12px; backdrop-filter: blur(10px);">
+        <div style="font-size: 16px; opacity: 0.9; margin-bottom: 5px;">💰 账户余额</div>
+        <div class="balance-display">
+          ¥ <span id="balance">0.00</span>
+        </div>
+        <div style="font-size: 13px; opacity: 0.8; margin-top: 8px;">
+          <span id="balanceStatus">余额充足 ✓</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 充值套餐 -->
+    <div class="card">
+      <h3>💰 充值套餐</h3>
+      <div class="plan-grid" id="plansContainer">
+        加载中...
+      </div>
+
+      <h4 style="margin-top: 25px; margin-bottom: 10px;">选择支付方式 (IJPay)</h4>
+      <div class="payment-methods" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="payment-btn" onclick="selectPayment('wechat')">
+          <div style="font-size: 32px;">💚</div>
+          <div style="font-size: 16px; font-weight: 600;">微信支付</div>
+          <div style="font-size: 11px; color: #999;">扫码支付</div>
+        </div>
+        <div class="payment-btn" onclick="selectPayment('alipay')">
+          <div style="font-size: 32px;">💙</div>
+          <div style="font-size: 16px; font-weight: 600;">支付宝</div>
+          <div style="font-size: 11px; color: #999;">扫码支付</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="createPaymentOrder()" style="width: 100%; margin-top: 20px; font-size: 18px;">
+        💰 立即充值
+      </button>
+      <div id="paymentModeIndicator" style="margin-top: 10px; color: #666; font-size: 12px; text-align: center;">
+        <!-- Payment mode indicator will be shown here -->
+      </div>
+    </div>
+
+    <!-- Payment QR Code Modal -->
+    <div id="paymentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 10px 50px rgba(0,0,0,0.5); text-align: center;">
+        <h2 style="margin-top: 0; color: #333;" id="paymentTitle">扫码支付</h2>
+        
+        <div id="qrCodeContainer" style="margin: 30px 0; display: flex; justify-content: center; align-items: center; min-height: 280px;">
+          <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+        </div>
+        
+        <div id="paymentInfo" style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+          <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="paymentAmount">¥0.00</div>
+          <div style="font-size: 14px; color: #666; margin-top: 5px;" id="paymentDesc">充值套餐</div>
+        </div>
+        
+        <div style="font-size: 13px; color: #999; margin-bottom: 20px;">
+          <div>订单号：<span id="orderIdDisplay">-</span></div>
+          <div style="margin-top: 5px;">请使用 <span id="paymentMethodDisplay" style="font-weight: 600;">微信</span> 扫描二维码完成支付</div>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+          <button onclick="closePaymentModal()" class="btn-secondary" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
+            ❌ 取消支付
+          </button>
+          <button onclick="checkPaymentStatus()" class="btn-primary" style="flex: 1; padding: 12px; font-size: 16px;">
+            🔄 刷新状态
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 会员等级 -->
+    <div class="card">
+      <h3>🏆 会员等级</h3>
+      <div id="membershipLevelContainer">加载中...</div>
+    </div>
+
+    <!-- 我的优惠券 -->
+    <div class="card">
+      <h3>🎫 我的优惠券</h3>
+      <div style="margin-bottom: 15px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="couponCode" placeholder="输入优惠券码" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+          <button class="btn-primary" onclick="claimCoupon()" style="white-space: nowrap;">🎁 领取优惠券</button>
+        </div>
+      </div>
+      <div id="couponsContainer">加载中...</div>
+    </div>
+
+    <!-- 推荐奖励 -->
+    <div class="card">
+      <h3>💝 推荐奖励</h3>
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
+        <div style="font-size: 16px; margin-bottom: 10px;">📢 我的推荐码</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div id="referralCode" style="flex: 1; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; font-size: 24px; font-weight: bold; letter-spacing: 2px; text-align: center;">
+            --------
+          </div>
+          <button onclick="copyReferralCode()" style="background: white; color: #667eea; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            📋 复制
+          </button>
+        </div>
+        <div style="margin-top: 10px; font-size: 14px; opacity: 0.9;">
+          分享您的推荐码，好友注册后您将获得奖励！
+        </div>
+      </div>
+      <div id="referralStatsContainer">加载中...</div>
+      <div id="referralListContainer" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- 通知设置 -->
+    <div class="card">
+      <h3>📢 通知设置</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 20px;">配置您的通知接收方式，除默认邮件通知外，还可以选择其他渠道</p>
+      
+      <div style="margin-bottom: 25px; padding: 15px; background: #e7f3ff; border-left: 4px solid #007bff; border-radius: 6px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="notificationEnabled" checked style="width: 18px; height: 18px;">
+          <span style="font-weight: 600; font-size: 15px;">✅ 启用通知接收</span>
+        </label>
+        <div style="font-size: 12px; color: #666; margin-top: 8px; margin-left: 28px;">
+          关闭后将不会收到任何通知（包括邮件）
+        </div>
+      </div>
+      
+      <div id="notificationChannels">
+        <!-- WxPusher -->
+        <div class="notification-channel" data-channel="wxpusher" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">💚</span>
+              <h4 style="margin: 0;">WxPusher 微信推送</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="wxpusher_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="wxpusher_enabled" checked 
+                     onchange="toggleChannelStatus('wxpusher', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
+          </div>
+          <input type="text" id="wxpusher_token" placeholder="输入您的 WxPusher Token (例如: AT_xxx)" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <input type="text" id="wxpusher_uid" placeholder="输入您的 WxPusher UID (例如: UID_xxx)" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <a href="https://wxpusher.zjiecode.com/" target="_blank" style="color: #007bff;">📖 如何获取Token和UID？</a>
+            <span style="margin-left: 10px;">扫码关注公众号即可获得</span>
+          </div>
+        </div>
+        
+        <!-- PushPlus -->
+        <div class="notification-channel" data-channel="pushplus" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">📱</span>
+              <h4 style="margin: 0;">PushPlus 多平台推送</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="pushplus_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="pushplus_enabled" checked 
+                     onchange="toggleChannelStatus('pushplus', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
+          </div>
+          <input type="text" id="pushplus_token" placeholder="输入您的 PushPlus Token" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <a href="http://www.pushplus.plus/" target="_blank" style="color: #007bff;">📖 如何获取Token？</a>
+            <span style="margin-left: 10px;">支持微信、企业微信、钉钉等</span>
+          </div>
+        </div>
+        
+        <!-- Resend Email -->
+        <div class="notification-channel" data-channel="resend" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">📧</span>
+              <h4 style="margin: 0;">Resend 邮件通知</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="resend_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="resend_enabled" checked 
+                     onchange="toggleChannelStatus('resend', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
+          </div>
+          <input type="email" id="resend_email" placeholder="输入接收通知的邮箱地址" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <span>除默认QQ邮箱外的额外邮件通知</span>
+          </div>
+        </div>
+        
+        <!-- Telegram -->
+        <div class="notification-channel" data-channel="telegram" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">✈️</span>
+              <h4 style="margin: 0;">Telegram 电报通知</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="telegram_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="telegram_enabled" checked 
+                     onchange="toggleChannelStatus('telegram', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
+          </div>
+          <input type="text" id="telegram_bot_token" placeholder="输入您的 Telegram Bot Token (例如: 123456:ABC...)" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <input type="text" id="telegram_chat_id" placeholder="输入您的 Telegram Chat ID" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <a href="https://core.telegram.org/bots" target="_blank" style="color: #007bff;">📖 如何获取Bot Token和Chat ID？</a>
+            <span style="margin-left: 10px;">联系 @BotFather 创建Bot，@userinfobot 获取ID</span>
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-primary" onclick="saveNotificationConfig()" style="flex: 1; font-size: 16px;">
+          💾 保存通知设置
+        </button>
+        <button class="btn-secondary" onclick="testNotification()" style="flex: 1; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px;">
+          🧪 测试通知
+        </button>
+      </div>
+      
+      <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+        <div style="font-size: 13px; color: #856404;">
+          <strong>💡 提示：</strong>
+          <ul style="margin: 8px 0 0 20px; padding: 0;">
+            <li>所有配置为可选，至少配置一个渠道即可接收通知</li>
+            <li>默认始终会发送邮件到注册邮箱（视频处理成功时）</li>
+            <li>管理员可能会限制某些渠道的使用</li>
+            <li>点击"测试通知"可以验证配置是否正确</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 修改密码 -->
+    <div class="card">
+      <h3>🔐 修改密码</h3>
+      <div style="max-width: 500px;">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">当前密码</label>
+          <input type="password" id="oldPassword" placeholder="请输入当前密码" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">新密码</label>
+          <input type="password" id="newPassword" placeholder="请输入新密码（至少8位）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">确认新密码</label>
+          <input type="password" id="confirmPassword" placeholder="请再次输入新密码" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        </div>
+        <button class="btn-primary" onclick="changePassword()">🔒 修改密码</button>
+      </div>
+    </div>
+
+    <!-- 交易记录 -->
+    <div class="card">
+      <h3>📊 最近交易记录</h3>
+      <div id="transactionsContainer">加载中...</div>
+    </div>
+  </div>
+
+  <!-- Payment QR Code Modal -->
+  <div id="paymentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; text-align: center; box-shadow: 0 10px 50px rgba(0,0,0,0.5);">
+      <h2 id="paymentTitle" style="margin: 0 0 20px 0; color: #333;">扫码支付</h2>
+      
+      <div id="qrCodeContainer" style="margin: 20px 0; padding: 20px; background: #f5f5f5; border-radius: 12px; display: inline-block;">
+        <img id="qrCodeImage" src="" alt="QR Code" style="width: 250px; height: 250px; display: block;">
+      </div>
+      
+      <div style="margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #667eea15, #764ba215); border-radius: 10px; border-left: 4px solid #667eea;">
+        <div style="font-size: 14px; color: #666; margin-bottom: 5px;">订单金额</div>
+        <div id="paymentAmount" style="font-size: 32px; font-weight: bold; color: #667eea;">¥0.00</div>
+      </div>
+      
+      <div style="font-size: 14px; color: #999; margin-bottom: 20px;">
+        <div id="paymentInstructions">请使用手机扫描二维码完成支付</div>
+        <div id="paymentOrderId" style="margin-top: 10px; font-size: 12px;">订单号: -</div>
+      </div>
+      
+      <div id="paymentStatus" style="margin: 15px 0; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 14px; color: #856404;">
+        ⏳ 等待支付中...
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button onclick="checkPaymentStatus()" class="btn-primary" style="flex: 1;">
+          🔄 检查支付状态
+        </button>
+        <button onclick="closePaymentModal()" class="btn-primary" style="flex: 1; background: #6c757d;">
+          ❌ 取消支付
+        </button>
+      </div>
+      
+      <div id="mockPaymentSection" style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 2px dashed #ffc107; display: none;">
+        <div style="font-size: 13px; color: #856404; margin-bottom: 10px;">
+          ⚠️ 演示模式：未配置真实支付渠道
+        </div>
+        <button onclick="mockConfirmPayment()" class="btn-primary" style="background: #ffc107; color: #333; width: 100%;">
+          ✅ 模拟支付成功（测试用）
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let selectedPlanId = null;
+    let selectedPaymentMethod = null;
+    let currentUser = null;
+
+    async function loadProfile() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/public/login.html';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          currentUser = result.user;
+          document.getElementById('username').textContent = currentUser.username;
+          document.getElementById('email').textContent = currentUser.email;
+          
+          // Update balance display with animation
+          const balanceElement = document.getElementById('balance');
+          const balanceStatus = document.getElementById('balanceStatus');
+          if (balanceElement) {
+            const balance = currentUser.balance;
+            balanceElement.textContent = balance.toFixed(2);
+            
+            // Update balance status
+            if (balance < 5) {
+              balanceStatus.textContent = '余额不足，请充值 ⚠️';
+              balanceStatus.style.color = '#ffc107';
+            } else if (balance < 20) {
+              balanceStatus.textContent = '余额偏低，建议充值';
+              balanceStatus.style.color = '#f0f0f0';
+            } else {
+              balanceStatus.textContent = '余额充足 ✓';
+              balanceStatus.style.color = '#90ee90';
+            }
+          }
+          
+          // Load payment plans (always fetch latest prices)
+          await loadPaymentPlans();
+          
+          // Load membership level
+          loadMembershipLevel();
+          
+          // Load coupons
+          loadCoupons();
+          
+          // Load referral code and stats
+          loadReferralInfo();
+          
+          // Load notification config
+          loadNotificationConfig();
+          
+          loadTransactions();
+        } else {
+          window.location.href = '/public/login.html';
+        }
+      } catch (error) {
+        console.error('加载用户信息失败:', error);
+        window.location.href = '/public/login.html';
+      }
+    }
+
+    // Load payment plans dynamically
+    async function loadPaymentPlans() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/payment-plans?t=${Date.now()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success && result.plans) {
+          // Save plans to localStorage for later use
+          localStorage.setItem('paymentPlans', JSON.stringify(result.plans));
+          renderPaymentPlans(result.plans);
+        }
+      } catch (error) {
+        console.error('加载套餐失败:', error);
+      }
+    }
+
+    // Render payment plans
+    function renderPaymentPlans(plans) {
+      const container = document.getElementById('plansContainer');
+      
+      // Sort plans by price
+      plans.sort((a, b) => a.price - b.price);
+      
+      const html = plans.map(plan => {
+        let icon = '';
+        let highlight = '';
+        
+        if (plan.type === 'yearly') {
+          icon = '🔥';
+          highlight = 'color: #ff6b6b;';
+        }
+        
+        return `
+          <div class="plan-card" onclick="selectPlan(${plan.id})">
+            <div style="font-size: 18px; font-weight: 600; ${highlight}">${plan.name} ${icon}</div>
+            <div class="plan-price">¥${parseFloat(plan.price).toFixed(2)}</div>
+            <div style="color: #666; font-size: 14px;">${plan.description || ''}</div>
+          </div>
+        `;
+      }).join('');
+      
+      container.innerHTML = html;
+    }
+
+    async function loadTransactions() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/transactions?limit=10`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success && result.transactions.length > 0) {
+          const html = result.transactions.map(t => `
+            <div class="info-item">
+              <div>
+                <strong>${t.type === 'recharge' ? '💰 充值' : '📝 消费'}</strong>
+                <span style="margin-left: 10px;">${t.description}</span>
+              </div>
+              <div>
+                <span style="color: ${t.type === 'recharge' ? '#28a745' : '#dc3545'}; font-weight: 600;">
+                  ${t.type === 'recharge' ? '+' : ''}¥${Math.abs(t.amount).toFixed(2)}
+                </span>
+                <span style="margin-left: 10px; color: #999; font-size: 12px;">
+                  ${new Date(t.created_at).toLocaleString('zh-CN')}
+                </span>
+              </div>
+            </div>
+          `).join('');
+          document.getElementById('transactionsContainer').innerHTML = html;
+        } else {
+          document.getElementById('transactionsContainer').innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">暂无交易记录</div>';
+        }
+      } catch (error) {
+        console.error('加载交易记录失败:', error);
+      }
+    }
+
+    function selectPlan(planId) {
+      window.selectedPlanId = planId;
+      document.querySelectorAll('.plan-card').forEach((card, index) => {
+        card.classList.toggle('selected', index + 1 === planId);
+      });
+    }
+
+    function selectPayment(method) {
+      window.selectedPaymentMethod = method;
+      document.querySelectorAll('.payment-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      event.target.closest('.payment-btn').classList.add('selected');
+    }
+
+    // Global variables for payment
+    let currentOrderId = null;
+    let paymentStatusCheckInterval = null;
+    
+    async function recharge() {
+      if (!selectedPlanId) {
+        alert('❌ 请选择充值套餐');
+        return;
+      }
+      if (!selectedPaymentMethod) {
+        alert('❌ 请选择支付方式');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const rechargeBtn = event.target;
+      rechargeBtn.disabled = true;
+      rechargeBtn.innerHTML = '<span class="loading-spinner"></span>创建订单中...';
+      
+      try {
+        // Get plan info
+        const plans = JSON.parse(localStorage.getItem('paymentPlans') || '[]');
+        const selectedPlan = plans.find(p => p.id === selectedPlanId);
+        const amount = selectedPlan ? parseFloat(selectedPlan.price) : 0;
+        
+        const response = await fetch(`${API_BASE}/api/payment/create-order`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            planId: window.selectedPlanId,
+            paymentMethod: window.selectedPaymentMethod
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Store order ID
+          window.currentOrderId = result.orderId;
+          
+          // Show payment modal with QR code (function from payment-ijpay.js)
+          if (typeof showPaymentModal === 'function') {
+            showPaymentModal(result);
+          }
+          
+          // Reset button
+          rechargeBtn.disabled = false;
+          rechargeBtn.innerHTML = '💰 立即充值';
+        } else {
+          alert('❌ 创建订单失败: ' + result.error);
+          rechargeBtn.disabled = false;
+          rechargeBtn.innerHTML = '💰 立即充值';
+        }
+      } catch (error) {
+        console.error('充值错误:', error);
+        alert('❌ 创建订单失败，请稍后重试');
+        rechargeBtn.disabled = false;
+        rechargeBtn.innerHTML = '💰 立即充值';
+      }
+    }
+    
+    function showPaymentModal(paymentData, amount) {
+      const modal = document.getElementById('paymentModal');
+      const qrCodeImage = document.getElementById('qrCodeImage');
+      const paymentTitle = document.getElementById('paymentTitle');
+      const paymentAmount = document.getElementById('paymentAmount');
+      const paymentOrderId = document.getElementById('paymentOrderId');
+      const paymentInstructions = document.getElementById('paymentInstructions');
+      const mockSection = document.getElementById('mockPaymentSection');
+      const modeIndicator = document.getElementById('paymentModeIndicator');
+      
+      // Set payment title
+      if (paymentData.paymentType === 'wechat') {
+        paymentTitle.textContent = '💚 微信扫码支付';
+        paymentInstructions.textContent = '请使用微信扫一扫完成支付';
+      } else if (paymentData.paymentType === 'alipay') {
+        paymentTitle.textContent = '💙 支付宝扫码支付';
+        paymentInstructions.textContent = '请使用支付宝扫一扫完成支付';
+      }
+      
+      // Set QR code
+      if (paymentData.qrCode) {
+        qrCodeImage.src = paymentData.qrCode;
+      }
+      
+      // Set amount and order ID
+      paymentAmount.textContent = `¥${amount.toFixed(2)}`;
+      paymentOrderId.textContent = `订单号: ${paymentData.orderId}`;
+      
+      // Show mock section if in mock mode
+      if (paymentData.mockMode) {
+        mockSection.style.display = 'block';
+        modeIndicator.innerHTML = '<span style="color: #ffc107;">⚠️ 演示模式 - 点击"模拟支付成功"按钮测试</span>';
+      } else {
+        mockSection.style.display = 'none';
+        modeIndicator.innerHTML = '<span style="color: #28a745;">✓ 真实支付渠道已接入</span>';
+      }
+      
+      // Show modal
+      modal.style.display = 'flex';
+      
+      // Start checking payment status (every 3 seconds)
+      startPaymentStatusCheck();
+    }
+    
+    function closePaymentModal() {
+      const modal = document.getElementById('paymentModal');
+      modal.style.display = 'none';
+      currentOrderId = null;
+      stopPaymentStatusCheck();
+    }
+    
+    function startPaymentStatusCheck() {
+      stopPaymentStatusCheck();
+      paymentCheckInterval = setInterval(checkPaymentStatus, 3000);
+    }
+    
+    function stopPaymentStatusCheck() {
+      if (paymentCheckInterval) {
+        clearInterval(paymentCheckInterval);
+        paymentCheckInterval = null;
+      }
+    }
+    
+    async function checkPaymentStatus() {
+      if (!currentOrderId) return;
+      
+      const token = localStorage.getItem('token');
+      const statusDiv = document.getElementById('paymentStatus');
+      
+      try {
+        statusDiv.innerHTML = '🔄 检查支付状态中...';
+        statusDiv.style.background = '#d1ecf1';
+        statusDiv.style.color = '#0c5460';
+        
+        const response = await fetch(`${API_BASE}/api/payment/query-order/${currentOrderId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.paid) {
+          // Payment successful
+          stopPaymentStatusCheck();
+          statusDiv.innerHTML = '✅ 支付成功！';
+          statusDiv.style.background = '#d4edda';
+          statusDiv.style.color = '#155724';
+          
+          setTimeout(() => {
+            closePaymentModal();
+            alert('🎉 充值成功！正在刷新页面...');
+            loadProfile();
+          }, 1500);
+        } else {
+          statusDiv.innerHTML = '⏳ 等待支付中...';
+          statusDiv.style.background = '#fff3cd';
+          statusDiv.style.color = '#856404';
+        }
+      } catch (error) {
+        console.error('查询支付状态错误:', error);
+        statusDiv.innerHTML = '❌ 查询失败，请重试';
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.color = '#721c24';
+      }
+    }
+    
+    async function mockConfirmPayment() {
+      if (!currentOrderId) return;
+      
+      const token = localStorage.getItem('token');
+      const statusDiv = document.getElementById('paymentStatus');
+      
+      try {
+        statusDiv.innerHTML = '⏳ 处理中...';
+        
+        const response = await fetch(`${API_BASE}/api/payment/mock-confirm/${currentOrderId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          stopPaymentStatusCheck();
+          statusDiv.innerHTML = '✅ 支付成功！';
+          statusDiv.style.background = '#d4edda';
+          statusDiv.style.color = '#155724';
+          
+          setTimeout(() => {
+            closePaymentModal();
+            alert(`🎉 充值成功！\n\n新余额: ¥${result.newBalance.toFixed(2)}`);
+            loadProfile();
+          }, 1000);
+        } else {
+          alert('❌ 操作失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('模拟支付错误:', error);
+        alert('❌ 操作失败');
+      }
+    }
+
+    async function changePassword() {
+      const oldPassword = document.getElementById('oldPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        alert('请填写所有密码字段');
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        alert('新密码至少需要8位');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ oldPassword, newPassword })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('✅ 密码修改成功！请重新登录');
+          logout();
+        } else {
+          alert('❌ ' + result.error);
+        }
+      } catch (error) {
+        console.error('修改密码错误:', error);
+        alert('修改密码失败，请稍后重试');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/public/login.html';
+    }
+
+    // ==================== Membership Level ====================
+    
+    async function loadMembershipLevel() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/membership/my-level`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          renderMembershipLevel(result.membership);
+        }
+      } catch (error) {
+        console.error('加载会员等级失败:', error);
+      }
+    }
+    
+    function renderMembershipLevel(membership) {
+      if (!membership) {
+        document.getElementById('membershipLevelContainer').innerHTML = '<div style="color: #999;">暂无等级信息</div>';
+        return;
+      }
+      
+      const html = `
+        <div style="background: linear-gradient(135deg, ${membership.badge_color || '#95a5a6'}20 0%, ${membership.badge_color || '#95a5a6'}40 100%); padding: 25px; border-radius: 12px; border-left: 5px solid ${membership.badge_color || '#95a5a6'};">
+          <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+            <div style="font-size: 48px;">${membership.badge_icon || '🌱'}</div>
+            <div>
+              <div style="font-size: 24px; font-weight: bold; color: ${membership.badge_color || '#95a5a6'};">
+                ${membership.name}
+              </div>
+              <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                ${membership.description}
+              </div>
+            </div>
+          </div>
+          
+          <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #999;">累计消费</div>
+                <div style="font-size: 20px; font-weight: bold; color: #667eea;">¥${parseFloat(membership.total_spending || 0).toFixed(2)}</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #999;">会员折扣</div>
+                <div style="font-size: 20px; font-weight: bold; color: #28a745;">${membership.discount_rate || 0}%</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #999;">推荐奖励</div>
+                <div style="font-size: 20px; font-weight: bold; color: #ffc107;">¥${parseFloat(membership.referral_bonus || 0).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('membershipLevelContainer').innerHTML = html;
+    }
+    
+    // ==================== Coupons ====================
+    
+    async function loadCoupons() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/membership/my-coupons`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          renderCoupons(result.coupons);
+        }
+      } catch (error) {
+        console.error('加载优惠券失败:', error);
+      }
+    }
+    
+    function renderCoupons(coupons) {
+      if (!coupons || coupons.length === 0) {
+        document.getElementById('couponsContainer').innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">暂无优惠券</div>';
+        return;
+      }
+      
+      const html = coupons.map(coupon => {
+        const isExpired = new Date(coupon.valid_until) < new Date();
+        const isUsed = coupon.is_used;
+        const statusBadge = isUsed ? '已使用' : isExpired ? '已过期' : '可用';
+        const statusColor = isUsed ? '#999' : isExpired ? '#f39c12' : '#28a745';
+        
+        return `
+          <div style="background: ${isUsed || isExpired ? '#f5f5f5' : 'linear-gradient(135deg, #667eea20 0%, #764ba240 100%)'}; border: 2px dashed ${statusColor}; border-radius: 12px; padding: 15px; margin-bottom: 10px; position: relative; ${isUsed || isExpired ? 'opacity: 0.6;' : ''}">
+            <div style="position: absolute; top: 10px; right: 10px; background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${statusBadge}
+            </div>
+            <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">${coupon.name}</div>
+            <div style="font-size: 24px; font-weight: bold; color: #667eea; margin-bottom: 5px;">
+              ${coupon.type === 'percentage' ? coupon.discount_value + '折' : '¥' + parseFloat(coupon.discount_value).toFixed(2)}
+            </div>
+            <div style="font-size: 12px; color: #666;">
+              最低消费: ¥${parseFloat(coupon.min_purchase).toFixed(2)} | 
+              有效期至: ${new Date(coupon.valid_until).toLocaleDateString('zh-CN')}
+            </div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">
+              优惠码: ${coupon.code}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      document.getElementById('couponsContainer').innerHTML = html;
+    }
+    
+    async function claimCoupon() {
+      const code = document.getElementById('couponCode').value.trim();
+      if (!code) {
+        alert('请输入优惠券码');
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE}/api/membership/claim-coupon`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ code })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ 优惠券领取成功！');
+          document.getElementById('couponCode').value = '';
+          loadCoupons();
+        } else {
+          alert('❌ ' + (result.error || '领取失败'));
+        }
+      } catch (error) {
+        console.error('领取优惠券失败:', error);
+        alert('❌ 领取失败');
+      }
+    }
+    
+    // ==================== Referrals ====================
+    
+    async function loadReferralInfo() {
+      const token = localStorage.getItem('token');
+      try {
+        // Load referral code
+        const codeResponse = await fetch(`${API_BASE}/api/membership/my-referral-code`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const codeResult = await codeResponse.json();
+        
+        if (codeResult.success) {
+          document.getElementById('referralCode').textContent = codeResult.referralCode;
+        }
+        
+        // Load referrals and stats
+        const referralsResponse = await fetch(`${API_BASE}/api/membership/my-referrals`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const referralsResult = await referralsResponse.json();
+        
+        if (referralsResult.success) {
+          renderReferralStats(referralsResult.stats);
+          renderReferralList(referralsResult.referrals);
+        }
+      } catch (error) {
+        console.error('加载推荐信息失败:', error);
+      }
+    }
+    
+    function renderReferralStats(stats) {
+      const html = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; color: #999; margin-bottom: 5px;">推荐人数</div>
+            <div style="font-size: 24px; font-weight: bold; color: #667eea;">${stats.total_referrals || 0}</div>
+          </div>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; color: #999; margin-bottom: 5px;">已奖励</div>
+            <div style="font-size: 24px; font-weight: bold; color: #28a745;">${stats.rewarded_referrals || 0}</div>
+          </div>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 12px; color: #999; margin-bottom: 5px;">累计奖励</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffc107;">¥${parseFloat(stats.total_rewards || 0).toFixed(2)}</div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('referralStatsContainer').innerHTML = html;
+    }
+    
+    function renderReferralList(referrals) {
+      if (!referrals || referrals.length === 0) {
+        document.getElementById('referralListContainer').innerHTML = '<div style="text-align: center; color: #999; padding: 20px; background: #f8f9fa; border-radius: 8px;">还没有推荐记录</div>';
+        return;
+      }
+      
+      const html = `
+        <h4 style="margin-bottom: 15px;">推荐记录</h4>
+        <div style="max-height: 300px; overflow-y: auto;">
+          ${referrals.map(ref => `
+            <div style="background: white; border: 1px solid #e0e0e0; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: 600;">👤 ${ref.referred_username}</div>
+                  <div style="font-size: 12px; color: #666;">注册时间: ${new Date(ref.referred_created_at).toLocaleDateString('zh-CN')}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-weight: bold; color: ${ref.reward_given ? '#28a745' : '#ffc107'};">
+                    ${ref.reward_given ? '✅ 已奖励' : '⏳ 待激活'}
+                  </div>
+                  <div style="font-size: 12px; color: #666;">¥${parseFloat(ref.reward_amount).toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      
+      document.getElementById('referralListContainer').innerHTML = html;
+    }
+    
+    function copyReferralCode() {
+      const code = document.getElementById('referralCode').textContent;
+      if (!code || code === '--------') {
+        alert('推荐码加载中，请稍候');
+        return;
+      }
+      
+      navigator.clipboard.writeText(code).then(() => {
+        alert('✅ 推荐码已复制到剪贴板！\n\n' + code + '\n\n分享给好友即可获得奖励');
+      }).catch(() => {
+        alert('复制失败，您的推荐码是：' + code);
+      });
+    }
+
+    // ==================== Notification Configuration ====================
+    
+    async function loadNotificationConfig() {
+      const token = localStorage.getItem('token');
+      
+      try {
+        // Get user config
+        const userConfigResponse = await fetch(`${API_BASE}/api/notifications/user/config`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const config = await userConfigResponse.json();
+        
+        // Get available channels
+        const channelsResponse = await fetch(`${API_BASE}/api/notifications/channels`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const channelSettings = await channelsResponse.json();
+        
+        // Fill form
+        document.getElementById('notificationEnabled').checked = config.notification_enabled !== false;
+        document.getElementById('wxpusher_token').value = config.wxpusher_token || '';
+        document.getElementById('wxpusher_uid').value = config.wxpusher_uid || '';
+        document.getElementById('wxpusher_enabled').checked = config.wxpusher_enabled !== false;
+        document.getElementById('pushplus_token').value = config.pushplus_token || '';
+        document.getElementById('pushplus_enabled').checked = config.pushplus_enabled !== false;
+        document.getElementById('resend_email').value = config.resend_email || '';
+        document.getElementById('resend_enabled').checked = config.resend_enabled !== false;
+        document.getElementById('telegram_bot_token').value = config.telegram_bot_token || '';
+        document.getElementById('telegram_chat_id').value = config.telegram_chat_id || '';
+        document.getElementById('telegram_enabled').checked = config.telegram_enabled !== false;
+        
+        // Update status labels
+        toggleChannelStatus('wxpusher', config.wxpusher_enabled !== false);
+        toggleChannelStatus('pushplus', config.pushplus_enabled !== false);
+        toggleChannelStatus('resend', config.resend_enabled !== false);
+        toggleChannelStatus('telegram', config.telegram_enabled !== false);
+        
+        // Disable channels that admin has turned off
+        channelSettings.forEach(ch => {
+          const element = document.querySelector(`[data-channel="${ch.channel}"]`);
+          if (element && !ch.enabled) {
+            element.style.opacity = '0.5';
+            element.style.pointerEvents = 'none';
+            const input = element.querySelector('input');
+            if (input) {
+              input.disabled = true;
+              input.placeholder += ' (管理员已禁用此渠道)';
+            }
+          }
+        });
+      } catch (error) {
+        console.error('加载通知配置失败:', error);
+      }
+    }
+    
+    async function saveNotificationConfig() {
+      const token = localStorage.getItem('token');
+      const btn = event.target;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>保存中...';
+      
+      const config = {
+        notification_enabled: document.getElementById('notificationEnabled').checked,
+        wxpusher_token: document.getElementById('wxpusher_token').value.trim(),
+        wxpusher_uid: document.getElementById('wxpusher_uid').value.trim(),
+        wxpusher_enabled: document.getElementById('wxpusher_enabled').checked,
+        pushplus_token: document.getElementById('pushplus_token').value.trim(),
+        pushplus_enabled: document.getElementById('pushplus_enabled').checked,
+        resend_email: document.getElementById('resend_email').value.trim(),
+        resend_enabled: document.getElementById('resend_enabled').checked,
+        telegram_bot_token: document.getElementById('telegram_bot_token').value.trim(),
+        telegram_chat_id: document.getElementById('telegram_chat_id').value.trim(),
+        telegram_enabled: document.getElementById('telegram_enabled').checked
+      };
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/user/config`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(config)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ 通知设置保存成功！');
+        } else {
+          alert('❌ 保存失败: ' + (result.error || '未知错误'));
+        }
+      } catch (error) {
+        console.error('保存通知配置失败:', error);
+        alert('❌ 保存失败: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💾 保存通知设置';
+      }
+    }
+    
+    async function testNotification() {
+      const token = localStorage.getItem('token');
+      const btn = event.target;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>测试中...';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/test`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ channel: 'all' })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          const channels = Object.keys(result.result);
+          const successCount = channels.filter(ch => result.result[ch].status === 'success').length;
+          alert(`✅ 测试通知已发送！\n\n成功: ${successCount}/${channels.length} 个渠道\n\n请检查您配置的通知渠道是否收到消息`);
+        } else {
+          alert('❌ 测试失败: ' + (result.error || '未知错误'));
+        }
+      } catch (error) {
+        console.error('测试通知失败:', error);
+        alert('❌ 测试失败: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🧪 测试通知';
+      }
+    }
+
+    // Toggle channel visual status and update UI
+    function toggleChannelStatus(channel, enabled) {
+      const statusElement = document.getElementById(`${channel}_status`);
+      const channelCard = document.querySelector(`[data-channel="${channel}"]`);
+      const inputs = channelCard.querySelectorAll('input[type="text"], input[type="email"]');
+      
+      if (statusElement) {
+        if (enabled) {
+          statusElement.textContent = '✅ 已启用';
+          statusElement.style.color = '#28a745';
+          channelCard.style.opacity = '1';
+          channelCard.style.borderColor = 'transparent';
+          inputs.forEach(input => {
+            if (input.type !== 'checkbox') {
+              input.disabled = false;
+              input.style.opacity = '1';
+            }
+          });
+        } else {
+          statusElement.textContent = '❌ 已禁用';
+          statusElement.style.color = '#dc3545';
+          channelCard.style.opacity = '0.6';
+          channelCard.style.borderColor = '#dc3545';
+          inputs.forEach(input => {
+            if (input.type !== 'checkbox') {
+              input.disabled = true;
+              input.style.opacity = '0.5';
+            }
+          });
+        }
+      }
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

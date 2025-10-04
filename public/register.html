@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注册 - 视频章节生成器</title>
+  <link rel="stylesheet" href="/public/styles.css">
+  <style>
+    .auth-container {
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 40px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .auth-container h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .auth-container h2 {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 20px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: #555;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .form-group label .required {
+      color: #dc3545;
+      margin-left: 4px;
+    }
+    .form-group label .optional {
+      color: #999;
+      font-weight: normal;
+      font-size: 12px;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .verification-group {
+      display: flex;
+      gap: 10px;
+    }
+    .verification-group input {
+      flex: 1;
+    }
+    .btn-send-code {
+      padding: 10px 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+    .btn-send-code:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-submit:hover {
+      background: #0056b3;
+    }
+    .auth-footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #666;
+    }
+    .auth-footer a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 24px;
+      background: #28a745;
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      animation: slideIn 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 250px;
+    }
+    .toast.error { background: #dc3545; }
+    .toast.warning { background: #ffc107; color: #333; }
+    .toast.info { background: #17a2b8; }
+    .toast::before {
+      content: '';
+      font-size: 20px;
+    }
+    .toast.error::before { content: '❌'; }
+    .toast.warning::before { content: '⚠️'; }
+    .toast.info::before { content: 'ℹ️'; }
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(400px); opacity: 0; }
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .btn-submit:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .btn-send-code:hover:not(:disabled) {
+      background: #218838;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+    #captchaContainer:hover {
+      border-color: #0056b3;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      transform: translateY(-2px);
+    }
+    .password-strength {
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      margin-top: 5px;
+      overflow: hidden;
+    }
+    .password-strength-bar {
+      height: 100%;
+      transition: all 0.3s;
+      border-radius: 2px;
+    }
+    .strength-weak { width: 33%; background: #dc3545; }
+    .strength-medium { width: 66%; background: #ffc107; }
+    .strength-strong { width: 100%; background: #28a745; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h1>🎬 视频章节生成器</h1>
+    <h2>会员注册</h2>
+    
+    <form id="registerForm">
+      <!-- 必填字段 -->
+      <div class="form-group">
+        <label for="email">邮箱地址 <span class="required">*</span></label>
+        <input type="email" id="email" name="email" placeholder="请输入邮箱" required onblur="validateEmail()" oninput="clearEmailValidation()">
+        <div id="emailValidation" style="font-size: 12px; margin-top: 5px;"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="captcha">图形验证码 <span class="required">*</span></label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="captcha" name="captcha" placeholder="请输入图形验证码" required style="flex: 1; text-transform: uppercase;" maxlength="4" autocomplete="off">
+          <div id="captchaContainer" style="cursor: pointer; border: 2px solid #007bff; border-radius: 8px; padding: 8px; background: #fff; transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.1);" onclick="refreshCaptcha()" title="点击刷新验证码">
+            <div style="text-align: center; color: #999; font-size: 12px;">
+              <div class="loading-spinner"></div>
+              加载中...
+            </div>
+          </div>
+        </div>
+        <div style="color: #666; font-size: 12px; margin-top: 5px; display: flex; align-items: center; gap: 5px;">
+          <span>💡</span>
+          <span>不区分大小写，点击图片可刷新</span>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="verificationCode">验证码 <span class="required">*</span></label>
+        <div class="verification-group">
+          <input type="text" id="verificationCode" name="verificationCode" placeholder="请输入验证码" required>
+          <button type="button" class="btn-send-code" id="sendCodeBtn" onclick="sendVerificationCode()">
+            发送验证码
+          </button>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="username">用户名 <span class="required">*</span></label>
+        <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">密码 <span class="required">*</span></label>
+        <input type="password" id="password" name="password" placeholder="请输入密码（至少8位）" required minlength="8" oninput="checkPasswordStrength()">
+        <div class="password-strength">
+          <div id="passwordStrengthBar" class="password-strength-bar"></div>
+        </div>
+        <div id="passwordStrengthText" style="font-size: 12px; margin-top: 5px; color: #666;"></div>
+      </div>
+      
+      <!-- 可选字段 -->
+      <div class="form-group">
+        <label for="phone">手机号 <span class="optional">(可选)</span></label>
+        <input type="tel" id="phone" name="phone" placeholder="请输入手机号">
+      </div>
+      
+      <div class="form-group">
+        <label for="wechat">微信号 <span class="optional">(可选)</span></label>
+        <input type="text" id="wechat" name="wechat" placeholder="请输入微信号">
+      </div>
+      
+      <div class="form-group">
+        <label for="other_contact">其他联系方式 <span class="optional">(可选)</span></label>
+        <input type="text" id="other_contact" name="other_contact" placeholder="QQ、Telegram等">
+      </div>
+      
+      <div class="form-group">
+        <label for="notes">备注 <span class="optional">(可选)</span></label>
+        <textarea id="notes" name="notes" placeholder="备注信息"></textarea>
+      </div>
+      
+      <button type="submit" class="btn-submit">注册</button>
+    </form>
+    
+    <div class="auth-footer">
+      已有账号？<a href="/public/login.html">立即登录</a>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let countdown = 0;
+    let countdownTimer = null;
+    let captchaSessionId = null;
+
+    // Load captcha on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadCaptcha();
+    });
+
+    // Email validation
+    let emailValidationResult = null;
+
+    function clearEmailValidation() {
+      const validationDiv = document.getElementById('emailValidation');
+      validationDiv.textContent = '';
+      emailValidationResult = null;
+    }
+
+    async function validateEmail() {
+      const email = document.getElementById('email').value;
+      const validationDiv = document.getElementById('emailValidation');
+      
+      if (!email) {
+        validationDiv.textContent = '';
+        return;
+      }
+
+      // Basic format check
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        validationDiv.innerHTML = '<span style="color: #dc3545;">❌ 邮箱格式不正确</span>';
+        emailValidationResult = false;
+        return;
+      }
+
+      // Show checking status
+      validationDiv.innerHTML = '<span style="color: #17a2b8;"><span class="loading-spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> 检查邮箱有效性...</span>';
+
+      try {
+        // Check if email already exists
+        const response = await fetch(`${API_BASE}/api/auth/check-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (result.exists) {
+          validationDiv.innerHTML = '<span style="color: #dc3545;">❌ 该邮箱已被注册</span>';
+          emailValidationResult = false;
+        } else if (result.valid) {
+          validationDiv.innerHTML = '<span style="color: #28a745;">✅ 邮箱可用</span>';
+          emailValidationResult = true;
+        } else {
+          validationDiv.innerHTML = '<span style="color: #dc3545;">❌ 邮箱无效或不存在</span>';
+          emailValidationResult = false;
+        }
+      } catch (error) {
+        console.error('邮箱验证错误:', error);
+        validationDiv.innerHTML = '<span style="color: #ffc107;">⚠️ 无法验证邮箱，但可以继续注册</span>';
+        emailValidationResult = null; // 允许继续
+      }
+    }
+
+    // Load captcha
+    async function loadCaptcha() {
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/captcha`);
+        const result = await response.json();
+        
+        if (result.success) {
+          captchaSessionId = result.sessionId;
+          document.getElementById('captchaContainer').innerHTML = result.svg;
+        } else {
+          document.getElementById('captchaContainer').innerHTML = '<div style="color: red;">加载失败</div>';
+        }
+      } catch (error) {
+        console.error('加载验证码失败:', error);
+        document.getElementById('captchaContainer').innerHTML = '<div style="color: red;">加载失败</div>';
+      }
+    }
+
+    // Refresh captcha
+    function refreshCaptcha() {
+      loadCaptcha();
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Check password strength
+    function checkPasswordStrength() {
+      const password = document.getElementById('password').value;
+      const strengthBar = document.getElementById('passwordStrengthBar');
+      const strengthText = document.getElementById('passwordStrengthText');
+      
+      if (password.length === 0) {
+        strengthBar.className = 'password-strength-bar';
+        strengthText.textContent = '';
+        return;
+      }
+      
+      let strength = 0;
+      
+      // Length check
+      if (password.length >= 8) strength++;
+      if (password.length >= 12) strength++;
+      
+      // Complexity check
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+      if (/[0-9]/.test(password)) strength++;
+      if (/[^a-zA-Z0-9]/.test(password)) strength++;
+      
+      if (strength <= 2) {
+        strengthBar.className = 'password-strength-bar strength-weak';
+        strengthText.textContent = '密码强度：弱';
+        strengthText.style.color = '#dc3545';
+      } else if (strength <= 4) {
+        strengthBar.className = 'password-strength-bar strength-medium';
+        strengthText.textContent = '密码强度：中';
+        strengthText.style.color = '#ffc107';
+      } else {
+        strengthBar.className = 'password-strength-bar strength-strong';
+        strengthText.textContent = '密码强度：强 ✓';
+        strengthText.style.color = '#28a745';
+      }
+    }
+
+    async function sendVerificationCode() {
+      const email = document.getElementById('email').value;
+      
+      if (!email) {
+        showToast('请先输入邮箱地址', 'warning');
+        return;
+      }
+      
+      // Email format validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showToast('请输入有效的邮箱地址', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('sendCodeBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> 发送中...';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('✅ 验证码已发送，请查收邮箱', 'success');
+          
+          // Start countdown
+          countdown = 60;
+          updateCountdown();
+          countdownTimer = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+              clearInterval(countdownTimer);
+              btn.disabled = false;
+              btn.textContent = '发送验证码';
+            } else {
+              updateCountdown();
+            }
+          }, 1000);
+        } else {
+          showToast(result.error || '发送失败', 'error');
+          btn.disabled = false;
+        }
+      } catch (error) {
+        console.error('发送验证码错误:', error);
+        showToast('发送失败，请稍后重试', 'error');
+        btn.disabled = false;
+      }
+    }
+
+    function updateCountdown() {
+      const btn = document.getElementById('sendCodeBtn');
+      btn.textContent = `${countdown}秒后重试`;
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Check email validation result
+      if (emailValidationResult === false) {
+        showToast('❌ 请使用有效的邮箱地址', 'error');
+        return;
+      }
+
+      // If not validated yet, validate now
+      if (emailValidationResult === null) {
+        await validateEmail();
+        if (emailValidationResult === false) {
+          showToast('❌ 请使用有效的邮箱地址', 'error');
+          return;
+        }
+      }
+      
+      const formData = {
+        email: document.getElementById('email').value,
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        verificationCode: document.getElementById('verificationCode').value,
+        captcha: document.getElementById('captcha').value,
+        captchaSessionId: captchaSessionId,
+        phone: document.getElementById('phone').value,
+        wechat: document.getElementById('wechat').value,
+        other_contact: document.getElementById('other_contact').value,
+        notes: document.getElementById('notes').value
+      };
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          showToast('✅ 注册成功！即将跳转到登录页面...', 'success');
+          setTimeout(() => {
+            window.location.href = '/public/login.html';
+          }, 2000);
+        } else {
+          // 详细的错误提示
+          const errorMessage = result.error || '注册失败，请重试';
+          showToast('❌ ' + errorMessage, 'error');
+          
+          // 如果是验证码错误，提示重新获取
+          if (errorMessage.includes('验证码')) {
+            setTimeout(() => {
+              showToast('💡 请重新获取验证码', 'warning');
+            }, 2000);
+          }
+          
+          // 如果是图形验证码错误，自动刷新
+          if (errorMessage.includes('图形验证码')) {
+            refreshCaptcha();
+          }
+        }
+      } catch (error) {
+        console.error('注册错误:', error);
+        showToast('注册失败，请稍后重试', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -437,15 +437,56 @@
                             >
                         </div>
                         
-                        <!-- 普通用户的频道筛选（单选）-->
-                        <div id="normalChannelFilter">
+                        <!-- 普通用户的频道筛选（多选，带搜索和备注）-->
+                        <div id="normalChannelFilter" class="relative">
                             <label class="block text-sm font-medium text-gray-700 mb-1">频道筛选</label>
-                            <select 
-                                id="channelFilter" 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">全部频道</option>
-                            </select>
+                            <button id="channel-filter-btn" 
+                                    class="w-full px-4 py-2 bg-white border-2 border-blue-400 rounded-md text-left flex items-center justify-between hover:border-blue-500 transition">
+                                <span id="channel-filter-text" class="truncate text-sm">
+                                    所有频道 (0)
+                                </span>
+                                <svg class="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            
+                            <!-- 下拉菜单 -->
+                            <div id="channel-dropdown" class="absolute z-10 w-full mt-1 bg-white border-2 border-blue-400 rounded-md shadow-xl hidden" style="max-height: 500px;">
+                                <!-- 搜索框 -->
+                                <div class="p-3 border-b border-gray-200 bg-blue-50">
+                                    <div class="relative">
+                                        <input type="text" id="channel-search" 
+                                               placeholder="搜索频道名称..." 
+                                               class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <button id="clear-channel-search" class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 hidden">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 全选/取消全选 -->
+                                <div class="p-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="channel-select-all" class="mr-2 h-4 w-4 text-blue-600 rounded cursor-pointer">
+                                        <span class="text-sm font-medium text-gray-700">全选 / 取消全选</span>
+                                    </label>
+                                    <button id="channel-clear-selection" class="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                                        清空选择
+                                    </button>
+                                </div>
+                                
+                                <!-- 频道列表 -->
+                                <ul id="channel-list" class="overflow-y-auto" style="max-height: 300px;">
+                                    <li class="px-4 py-8 text-center text-gray-500">加载中...</li>
+                                </ul>
+                                
+                                <!-- 底部统计 -->
+                                <div class="p-3 border-t border-gray-200 bg-blue-50 text-sm text-gray-600">
+                                    已选择 <span id="selected-count" class="font-bold text-blue-600">0</span> 个频道
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- 管理员的频道筛选（多选，带搜索）-->
@@ -501,6 +542,27 @@
                                 </div>
                             </div>
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">快捷时间</label>
+                            <select 
+                                id="dateRangeFilter" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onchange="applyDateRangeFilter()"
+                            >
+                                <option value="all">所有时间</option>
+                                <option value="7">过去7天</option>
+                                <option value="14">过去14天</option>
+                                <option value="30">过去30天</option>
+                                <option value="60">过去60天</option>
+                                <option value="90">过去90天</option>
+                                <option value="120">过去120天</option>
+                                <option value="180">过去180天</option>
+                                <option value="360">过去360天</option>
+                                <option value="720">过去720天</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">起始日期</label>
                             <input 
@@ -667,7 +729,7 @@
                 
                 // 加载数据
                 await fetchStats();
-                await fetchChannels();
+                await loadChannelFilter();  // 加载频道筛选（普通用户）
                 await fetchVideos();
                 
             } catch (error) {
@@ -840,7 +902,9 @@
             }
         }
 
-        async function fetchChannels() {
+        // ==================== 普通用户频道筛选功能 ====================
+        
+        async function loadChannelFilter() {
             try {
                 const token = localStorage.getItem('token');
                 const res = await fetch('/api/channels', {
@@ -849,17 +913,106 @@
                 
                 if (!res.ok) return;
                 const channels = await res.json();
-                
-                const select = document.getElementById('channelFilter');
-                select.innerHTML = '<option value="">全部频道</option>';
-                channels.forEach(ch => {
-                    const option = document.createElement('option');
-                    option.value = ch;
-                    option.textContent = ch;
-                    select.appendChild(option);
-                });
+                channelsData = channels;
+                renderChannelList(channels);
             } catch (err) {
                 console.error('获取频道失败:', err);
+            }
+        }
+
+        function renderChannelList(channels, searchTerm = '') {
+            const filteredChannels = searchTerm 
+                ? channels.filter(ch => {
+                    const remark = channelRemarks[ch] || '';
+                    return ch.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           remark.toLowerCase().includes(searchTerm.toLowerCase());
+                  })
+                : channels;
+            
+            const html = filteredChannels.map(channel => {
+                const remark = channelRemarks[channel] || '';
+                const displayName = remark ? `${channel} (${remark})` : channel;
+                
+                return `
+                <li class="border-b border-gray-100 last:border-0">
+                    <div class="flex items-center px-4 py-2.5 hover:bg-blue-50 transition group">
+                        <input type="checkbox" 
+                               value="${channel.replace(/"/g, '&quot;')}" 
+                               ${selectedChannels.includes(channel) ? 'checked' : ''}
+                               onchange="toggleChannel('${channel.replace(/'/g, "\\'")}')"
+                               class="mr-3 h-4 w-4 text-blue-600 rounded cursor-pointer">
+                        <div class="flex-1">
+                            <div class="text-sm font-medium">${channel}</div>
+                            ${remark ? `<div class="text-xs text-gray-500 mt-0.5">📝 ${remark}</div>` : ''}
+                        </div>
+                        <button onclick="event.stopPropagation(); editChannelRemark('${channel.replace(/'/g, "\\'")}')" 
+                                class="text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition p-1"
+                                title="编辑备注">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                    </div>
+                </li>
+            `}).join('');
+            
+            document.getElementById('channel-list').innerHTML = html || 
+                '<li class="px-4 py-8 text-center text-gray-500">无匹配频道</li>';
+        }
+
+        function toggleChannel(channel) {
+            const index = selectedChannels.indexOf(channel);
+            if (index > -1) {
+                selectedChannels.splice(index, 1);
+            } else {
+                selectedChannels.push(channel);
+            }
+            updateChannelUI();
+        }
+
+        function updateChannelUI() {
+            const count = selectedChannels.length;
+            const total = channelsData.length;
+            
+            document.getElementById('selected-count').textContent = count;
+            
+            let text = '';
+            if (count === 0) {
+                text = `所有频道 (${total})`;
+            } else if (count === total) {
+                text = `全部频道 (${count})`;
+            } else {
+                text = `已选 ${count} 个频道`;
+            }
+            document.getElementById('channel-filter-text').textContent = text;
+            
+            // 更新全选checkbox状态
+            const selectAllCheckbox = document.getElementById('channel-select-all');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = count === total && count > 0;
+            }
+            
+            // 应用筛选
+            applyFilters();
+        }
+
+        function editChannelRemark(channel) {
+            const currentRemark = channelRemarks[channel] || '';
+            const newRemark = prompt(`为频道添加备注\n\n频道: ${channel}\n\n当前备注: ${currentRemark || '(无)'}\n\n请输入新的备注 (例如: 软件介绍):`, currentRemark);
+            
+            if (newRemark !== null) {
+                if (newRemark.trim()) {
+                    channelRemarks[channel] = newRemark.trim();
+                } else {
+                    delete channelRemarks[channel];
+                }
+                
+                // 保存到localStorage
+                localStorage.setItem('channelRemarks', JSON.stringify(channelRemarks));
+                
+                // 重新渲染列表
+                const searchTerm = document.getElementById('channel-search')?.value || '';
+                renderChannelList(channelsData, searchTerm);
             }
         }
 
@@ -874,9 +1027,18 @@
                 });
                 
                 const searchTerm = document.getElementById('searchInput').value.trim();
-                const channelFilter = document.getElementById('channelFilter').value;
                 const startDate = document.getElementById('startDate').value;
                 const endDate = document.getElementById('endDate').value;
+                
+                // 处理频道筛选（支持多选）
+                let channelFilter = '';
+                if (currentUser && currentUser.isAdmin && adminSelectedChannels.length > 0) {
+                    // 管理员：使用管理员选择的频道
+                    channelFilter = adminSelectedChannels.join(',');
+                } else if (selectedChannels.length > 0) {
+                    // 普通用户：使用普通用户选择的频道
+                    channelFilter = selectedChannels.join(',');
+                }
                 
                 if (searchTerm) params.append('search', searchTerm);
                 if (channelFilter) params.append('channel', channelFilter);
@@ -989,14 +1151,49 @@
             fetchVideos();
         }
 
+        function applyDateRangeFilter() {
+            const dateRange = document.getElementById('dateRangeFilter').value;
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            
+            if (dateRange === 'all') {
+                startDateInput.value = '';
+                endDateInput.value = '';
+            } else {
+                const days = parseInt(dateRange);
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(endDate.getDate() - days);
+                
+                endDateInput.value = endDate.toISOString().split('T')[0];
+                startDateInput.value = startDate.toISOString().split('T')[0];
+            }
+            
+            applyFilters();
+        }
+
         function resetFilters() {
             document.getElementById('searchInput').value = '';
-            document.getElementById('channelFilter').value = '';
+            document.getElementById('dateRangeFilter').value = 'all';
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
             document.getElementById('sortBy').value = 'published_at';
             document.getElementById('sortOrder').value = 'DESC';
             document.getElementById('limitSelect').value = '9';
+            
+            // 重置频道筛选
+            selectedChannels = [];
+            adminSelectedChannels = [];
+            updateChannelUI();
+            if (currentUser && currentUser.isAdmin && document.getElementById('admin-channel-select-all')) {
+                document.getElementById('admin-channel-select-all').checked = false;
+                renderAdminChannelList(allChannelsData);
+            }
+            if (document.getElementById('channel-select-all')) {
+                document.getElementById('channel-select-all').checked = false;
+                renderChannelList(channelsData);
+            }
+            
             currentFilterUserId = '';
             if (document.getElementById('userFilter')) {
                 document.getElementById('userFilter').value = '';
@@ -1263,6 +1460,83 @@
 
         // 事件监听器
         document.addEventListener('DOMContentLoaded', function() {
+            // ===== 普通用户频道筛选 =====
+            
+            // 切换下拉菜单
+            const channelBtn = document.getElementById('channel-filter-btn');
+            if (channelBtn) {
+                channelBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const dropdown = document.getElementById('channel-dropdown');
+                    dropdown.classList.toggle('hidden');
+                });
+            }
+            
+            // 全选/取消全选
+            const selectAllCheckbox = document.getElementById('channel-select-all');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function(e) {
+                    if (e.target.checked) {
+                        selectedChannels = [...channelsData];
+                    } else {
+                        selectedChannels = [];
+                    }
+                    renderChannelList(channelsData);
+                    updateChannelUI();
+                });
+            }
+            
+            // 清空选择
+            const clearBtn = document.getElementById('channel-clear-selection');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    selectedChannels = [];
+                    const selectAllCheckbox = document.getElementById('channel-select-all');
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.checked = false;
+                    }
+                    renderChannelList(channelsData);
+                    updateChannelUI();
+                });
+            }
+            
+            // 搜索功能
+            const searchInput = document.getElementById('channel-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.trim();
+                    renderChannelList(channelsData, searchTerm);
+                    
+                    const clearSearchBtn = document.getElementById('clear-channel-search');
+                    if (clearSearchBtn) {
+                        clearSearchBtn.classList.toggle('hidden', !searchTerm);
+                    }
+                });
+            }
+            
+            // 清除搜索
+            const clearSearchBtn = document.getElementById('clear-channel-search');
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    const searchInput = document.getElementById('channel-search');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        searchInput.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+            
+            // 点击外部关闭下拉菜单
+            document.addEventListener('click', function(e) {
+                const btn = document.getElementById('channel-filter-btn');
+                const dropdown = document.getElementById('channel-dropdown');
+                if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+            
+            // ===== 管理员频道筛选 =====
+            
             // 切换下拉菜单
             const adminChannelBtn = document.getElementById('admin-channel-filter-btn');
             if (adminChannelBtn) {

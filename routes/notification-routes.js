@@ -17,11 +17,15 @@ router.get('/user/config', authenticate, async (req, res) => {
     const result = await db.query(`
       SELECT 
         wxpusher_token,
-        wxpusher_uid, 
-        pushplus_token, 
-        resend_email, 
+        wxpusher_uid,
+        wxpusher_enabled,
+        pushplus_token,
+        pushplus_enabled,
+        resend_email,
+        resend_enabled,
         telegram_bot_token,
-        telegram_chat_id, 
+        telegram_chat_id,
+        telegram_enabled,
         notification_enabled
       FROM users 
       WHERE id = $1
@@ -43,21 +47,37 @@ router.get('/user/config', authenticate, async (req, res) => {
  * Update current user's notification configuration
  */
 router.post('/user/config', authenticate, async (req, res) => {
-  const { wxpusher_token, wxpusher_uid, pushplus_token, resend_email, telegram_bot_token, telegram_chat_id, notification_enabled } = req.body;
+  const { 
+    wxpusher_token, 
+    wxpusher_uid, 
+    wxpusher_enabled,
+    pushplus_token, 
+    pushplus_enabled,
+    resend_email, 
+    resend_enabled,
+    telegram_bot_token, 
+    telegram_chat_id, 
+    telegram_enabled,
+    notification_enabled 
+  } = req.body;
   
   try {
     await db.query(`
       UPDATE users SET
         wxpusher_token = $1,
         wxpusher_uid = $2,
-        pushplus_token = $3,
-        resend_email = $4,
-        telegram_bot_token = $5,
-        telegram_chat_id = $6,
-        notification_enabled = $7,
+        wxpusher_enabled = $3,
+        pushplus_token = $4,
+        pushplus_enabled = $5,
+        resend_email = $6,
+        resend_enabled = $7,
+        telegram_bot_token = $8,
+        telegram_chat_id = $9,
+        telegram_enabled = $10,
+        notification_enabled = $11,
         updated_at = NOW()
-      WHERE id = $8
-    `, [wxpusher_token, wxpusher_uid, pushplus_token, resend_email, telegram_bot_token, telegram_chat_id, notification_enabled, req.user.id]);
+      WHERE id = $12
+    `, [wxpusher_token, wxpusher_uid, wxpusher_enabled, pushplus_token, pushplus_enabled, resend_email, resend_enabled, telegram_bot_token, telegram_chat_id, telegram_enabled, notification_enabled, req.user.id]);
     
     console.log(`✅ User ${req.user.email} updated notification config`);
     res.json({ success: true, message: '通知配置已更新' });

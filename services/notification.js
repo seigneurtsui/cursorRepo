@@ -604,8 +604,8 @@ ${summaryList.join('\n')}
     `);
     const allowedChannels = enabledChannels.rows.map(r => r.channel);
 
-    // Send to each configured channel (with error isolation)
-    if (user.wxpusher_uid && user.wxpusher_token && allowedChannels.includes('wxpusher')) {
+    // Send to each configured channel (with error isolation and user-level enable/disable)
+    if (user.wxpusher_uid && user.wxpusher_token && user.wxpusher_enabled !== false && allowedChannels.includes('wxpusher')) {
       try {
         results.wxpusher = await this.sendWxPusher(title, content, user.wxpusher_uid);
         await this.logNotification(user.id, notificationType, 'wxpusher', title, content, 
@@ -614,9 +614,11 @@ ${summaryList.join('\n')}
         results.wxpusher = { status: 'failed', error: error.message };
         await this.logNotification(user.id, notificationType, 'wxpusher', title, content, 'failed', error.message);
       }
+    } else if (user.wxpusher_uid && user.wxpusher_token && user.wxpusher_enabled === false) {
+      results.wxpusher = { status: 'skipped', error: 'User disabled this channel' };
     }
 
-    if (user.pushplus_token && allowedChannels.includes('pushplus')) {
+    if (user.pushplus_token && user.pushplus_enabled !== false && allowedChannels.includes('pushplus')) {
       try {
         results.pushplus = await this.sendPushPlus(title, content, user.pushplus_token);
         await this.logNotification(user.id, notificationType, 'pushplus', title, content,
@@ -625,9 +627,11 @@ ${summaryList.join('\n')}
         results.pushplus = { status: 'failed', error: error.message };
         await this.logNotification(user.id, notificationType, 'pushplus', title, content, 'failed', error.message);
       }
+    } else if (user.pushplus_token && user.pushplus_enabled === false) {
+      results.pushplus = { status: 'skipped', error: 'User disabled this channel' };
     }
 
-    if (user.resend_email && allowedChannels.includes('resend')) {
+    if (user.resend_email && user.resend_enabled !== false && allowedChannels.includes('resend')) {
       try {
         results.resend = await this.sendResendEmail(title, content, user.resend_email);
         await this.logNotification(user.id, notificationType, 'resend', title, content,
@@ -636,9 +640,11 @@ ${summaryList.join('\n')}
         results.resend = { status: 'failed', error: error.message };
         await this.logNotification(user.id, notificationType, 'resend', title, content, 'failed', error.message);
       }
+    } else if (user.resend_email && user.resend_enabled === false) {
+      results.resend = { status: 'skipped', error: 'User disabled this channel' };
     }
 
-    if (user.telegram_chat_id && user.telegram_bot_token && allowedChannels.includes('telegram')) {
+    if (user.telegram_chat_id && user.telegram_bot_token && user.telegram_enabled !== false && allowedChannels.includes('telegram')) {
       try {
         results.telegram = await this.sendTelegram(title, content, user.telegram_chat_id);
         await this.logNotification(user.id, notificationType, 'telegram', title, content,
@@ -647,6 +653,8 @@ ${summaryList.join('\n')}
         results.telegram = { status: 'failed', error: error.message };
         await this.logNotification(user.id, notificationType, 'telegram', title, content, 'failed', error.message);
       }
+    } else if (user.telegram_chat_id && user.telegram_bot_token && user.telegram_enabled === false) {
+      results.telegram = { status: 'skipped', error: 'User disabled this channel' };
     }
 
     console.log(`📢 Sent notifications to user ${user.email}:`, results);

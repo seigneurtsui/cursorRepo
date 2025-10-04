@@ -187,10 +187,18 @@
       
       <div id="notificationChannels">
         <!-- WxPusher -->
-        <div class="notification-channel" data-channel="wxpusher" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <span style="font-size: 24px;">💚</span>
-            <h4 style="margin: 0;">WxPusher 微信推送</h4>
+        <div class="notification-channel" data-channel="wxpusher" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">💚</span>
+              <h4 style="margin: 0;">WxPusher 微信推送</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="wxpusher_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="wxpusher_enabled" checked 
+                     onchange="toggleChannelStatus('wxpusher', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
           </div>
           <input type="text" id="wxpusher_token" placeholder="输入您的 WxPusher Token (例如: AT_xxx)" 
                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
@@ -203,10 +211,18 @@
         </div>
         
         <!-- PushPlus -->
-        <div class="notification-channel" data-channel="pushplus" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <span style="font-size: 24px;">📱</span>
-            <h4 style="margin: 0;">PushPlus 多平台推送</h4>
+        <div class="notification-channel" data-channel="pushplus" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">📱</span>
+              <h4 style="margin: 0;">PushPlus 多平台推送</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="pushplus_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="pushplus_enabled" checked 
+                     onchange="toggleChannelStatus('pushplus', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
           </div>
           <input type="text" id="pushplus_token" placeholder="输入您的 PushPlus Token" 
                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
@@ -217,10 +233,18 @@
         </div>
         
         <!-- Resend Email -->
-        <div class="notification-channel" data-channel="resend" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <span style="font-size: 24px;">📧</span>
-            <h4 style="margin: 0;">Resend 邮件通知</h4>
+        <div class="notification-channel" data-channel="resend" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">📧</span>
+              <h4 style="margin: 0;">Resend 邮件通知</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="resend_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="resend_enabled" checked 
+                     onchange="toggleChannelStatus('resend', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
           </div>
           <input type="email" id="resend_email" placeholder="输入接收通知的邮箱地址" 
                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
@@ -230,10 +254,18 @@
         </div>
         
         <!-- Telegram -->
-        <div class="notification-channel" data-channel="telegram" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <span style="font-size: 24px;">✈️</span>
-            <h4 style="margin: 0;">Telegram 电报通知</h4>
+        <div class="notification-channel" data-channel="telegram" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid transparent; transition: all 0.3s;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">✈️</span>
+              <h4 style="margin: 0;">Telegram 电报通知</h4>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <span id="telegram_status" style="font-size: 13px; font-weight: 600; color: #28a745;">✅ 已启用</span>
+              <input type="checkbox" id="telegram_enabled" checked 
+                     onchange="toggleChannelStatus('telegram', this.checked)"
+                     style="width: 18px; height: 18px; cursor: pointer;">
+            </label>
           </div>
           <input type="text" id="telegram_bot_token" placeholder="输入您的 Telegram Bot Token (例如: 123456:ABC...)" 
                  style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
@@ -1024,10 +1056,20 @@
         document.getElementById('notificationEnabled').checked = config.notification_enabled !== false;
         document.getElementById('wxpusher_token').value = config.wxpusher_token || '';
         document.getElementById('wxpusher_uid').value = config.wxpusher_uid || '';
+        document.getElementById('wxpusher_enabled').checked = config.wxpusher_enabled !== false;
         document.getElementById('pushplus_token').value = config.pushplus_token || '';
+        document.getElementById('pushplus_enabled').checked = config.pushplus_enabled !== false;
         document.getElementById('resend_email').value = config.resend_email || '';
+        document.getElementById('resend_enabled').checked = config.resend_enabled !== false;
         document.getElementById('telegram_bot_token').value = config.telegram_bot_token || '';
         document.getElementById('telegram_chat_id').value = config.telegram_chat_id || '';
+        document.getElementById('telegram_enabled').checked = config.telegram_enabled !== false;
+        
+        // Update status labels
+        toggleChannelStatus('wxpusher', config.wxpusher_enabled !== false);
+        toggleChannelStatus('pushplus', config.pushplus_enabled !== false);
+        toggleChannelStatus('resend', config.resend_enabled !== false);
+        toggleChannelStatus('telegram', config.telegram_enabled !== false);
         
         // Disable channels that admin has turned off
         channelSettings.forEach(ch => {
@@ -1057,10 +1099,14 @@
         notification_enabled: document.getElementById('notificationEnabled').checked,
         wxpusher_token: document.getElementById('wxpusher_token').value.trim(),
         wxpusher_uid: document.getElementById('wxpusher_uid').value.trim(),
+        wxpusher_enabled: document.getElementById('wxpusher_enabled').checked,
         pushplus_token: document.getElementById('pushplus_token').value.trim(),
+        pushplus_enabled: document.getElementById('pushplus_enabled').checked,
         resend_email: document.getElementById('resend_email').value.trim(),
+        resend_enabled: document.getElementById('resend_enabled').checked,
         telegram_bot_token: document.getElementById('telegram_bot_token').value.trim(),
-        telegram_chat_id: document.getElementById('telegram_chat_id').value.trim()
+        telegram_chat_id: document.getElementById('telegram_chat_id').value.trim(),
+        telegram_enabled: document.getElementById('telegram_enabled').checked
       };
       
       try {
@@ -1120,6 +1166,39 @@
       } finally {
         btn.disabled = false;
         btn.innerHTML = '🧪 测试通知';
+      }
+    }
+
+    // Toggle channel visual status and update UI
+    function toggleChannelStatus(channel, enabled) {
+      const statusElement = document.getElementById(`${channel}_status`);
+      const channelCard = document.querySelector(`[data-channel="${channel}"]`);
+      const inputs = channelCard.querySelectorAll('input[type="text"], input[type="email"]');
+      
+      if (statusElement) {
+        if (enabled) {
+          statusElement.textContent = '✅ 已启用';
+          statusElement.style.color = '#28a745';
+          channelCard.style.opacity = '1';
+          channelCard.style.borderColor = 'transparent';
+          inputs.forEach(input => {
+            if (input.type !== 'checkbox') {
+              input.disabled = false;
+              input.style.opacity = '1';
+            }
+          });
+        } else {
+          statusElement.textContent = '❌ 已禁用';
+          statusElement.style.color = '#dc3545';
+          channelCard.style.opacity = '0.6';
+          channelCard.style.borderColor = '#dc3545';
+          inputs.forEach(input => {
+            if (input.type !== 'checkbox') {
+              input.disabled = true;
+              input.style.opacity = '0.5';
+            }
+          });
+        }
       }
     }
 

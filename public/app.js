@@ -758,16 +758,15 @@ function applyFilters() {
   const startDate = document.getElementById('filterStartDate').value;
   const endDate = document.getElementById('filterEndDate').value;
   
-  // Admin: user filter (only from video list header)
-  const adminUserFilter = document.getElementById('adminUserFilter');
-  const userId = adminUserFilter ? adminUserFilter.value : '';
+  // Admin: user filter (support multiple user IDs)
+  const userIds = selectedUserIds.length > 0 ? selectedUserIds.join(',') : '';
 
   currentFilters = {
     ...(keyword && { keyword }),
     ...(status && { status }),
     ...(startDate && { startDate }),
     ...(endDate && { endDate }),
-    ...(userId && { userId })
+    ...(userIds && { userIds })
   };
 
   currentPage = 1;

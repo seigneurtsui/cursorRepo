@@ -509,21 +509,27 @@ router.put('/admin/users/:id/adjust-balance', authenticate, requireAdmin, async 
     const result = await db.query(updateQuery, [balance, userId]);
     
     // Create transaction record for balance adjustment
+    // If balance increases (difference >= 0) -> type is 'recharge' (显示为 💰 充值)
+    // If balance decreases (difference < 0) -> type is 'usage' (显示为 📝 消费)
+    const transactionType = difference >= 0 ? 'recharge' : 'usage';
+    const description = `管理员调整余额 (操作人: ${req.user.username})\n原余额: ¥${currentBalance.toFixed(2)}\n新余额: ¥${balance.toFixed(2)}\n差额: ${difference >= 0 ? '+' : ''}¥${difference.toFixed(2)}`;
+    
     const transactionQuery = `
-      INSERT INTO transactions (user_id, type, amount, status, description, created_at)
-      VALUES ($1, $2, $3, 'completed', $4, NOW())
+      INSERT INTO transactions (user_id, type, amount, status, payment_method, operator_id, description, created_at)
+      VALUES ($1, $2, $3, 'completed', $4, $5, $6, NOW())
       RETURNING *
     `;
-    
-    const transactionType = difference >= 0 ? 'admin_credit' : 'admin_debit';
-    const description = `管理员调整余额 (操作人: ${req.user.username})\n原余额: ¥${currentBalance.toFixed(2)}\n新余额: ¥${balance.toFixed(2)}\n差额: ${difference >= 0 ? '+' : ''}¥${difference.toFixed(2)}`;
     
     await db.query(transactionQuery, [
       userId,
       transactionType,
       Math.abs(difference),
+      '管理员调整',
+      req.user.id,
       description
     ]);
+    
+    console.log(`Admin ${req.user.email} adjusted balance for user ${username}: ${currentBalance} -> ${balance} (${difference >= 0 ? '+' : ''}${difference}, type: ${transactionType})`);
 
     res.json({ success: true, user: result.rows[0] });
   } catch (error) {

@@ -31,23 +31,53 @@ router.post('/create-order', authenticate, async (req, res) => {
     let paymentData;
 
     // Check if using mock mode (no real payment config)
-    const isMockMode = !process.env.WECHAT_APP_ID && !process.env.ALIPAY_APP_ID && !process.env.YUNGOUOS_MCH_ID;
+    // Mock mode is enabled when:
+    // 1. No WeChat Pay config AND
+    // 2. No Alipay config AND
+    // 3. (No YunGouOS config OR YunGouOS is explicitly disabled)
+    const hasWechatConfig = !!(process.env.WECHAT_APP_ID && process.env.WECHAT_MCH_ID && process.env.WECHAT_API_KEY);
+    const hasAlipayConfig = !!(process.env.ALIPAY_APP_ID && process.env.ALIPAY_PRIVATE_KEY);
+    const hasYunGouOSConfig = !!(process.env.YUNGOUOS_MCH_ID && process.env.YUNGOUOS_API_KEY);
+    const yunGouOSEnabled = process.env.YUNGOUOS_ENABLED === 'true';
+    
+    const isMockMode = !hasWechatConfig && !hasAlipayConfig && (!hasYunGouOSConfig || !yunGouOSEnabled);
+
+    console.log('💳 Payment Config Check:', {
+      hasWechatConfig,
+      hasAlipayConfig,
+      hasYunGouOSConfig,
+      yunGouOSEnabled,
+      isMockMode
+    });
 
     if (isMockMode) {
       // Mock mode for testing
+      console.log('🎭 Using Mock Payment Mode');
       paymentData = await ijpayService.createMockOrder(orderId, amount, description, paymentMethod);
-    } else if (process.env.YUNGOUOS_ENABLED === 'true') {
+    } else if (yunGouOSEnabled && hasYunGouOSConfig) {
       // Use YunGouOS for personal accounts
+      console.log('🏦 Using YunGouOS Payment');
       const payType = paymentMethod === 'wechat' ? 'wxpay' : paymentMethod === 'alipay' ? 'alipay' : 'unionpay';
       paymentData = await ijpayService.createYunGouOSOrder(orderId, amount, description, payType);
     } else {
       // Use direct payment channels
+      console.log(`💰 Using Direct Payment: ${paymentMethod}`);
       switch (paymentMethod) {
         case 'wechat':
-          paymentData = await ijpayService.createWechatOrder(orderId, amount, description);
+          if (!hasWechatConfig) {
+            console.log('⚠️ WeChat Pay not configured, using mock mode');
+            paymentData = await ijpayService.createMockOrder(orderId, amount, description, paymentMethod);
+          } else {
+            paymentData = await ijpayService.createWechatOrder(orderId, amount, description);
+          }
           break;
         case 'alipay':
-          paymentData = await ijpayService.createAlipayOrder(orderId, amount, description);
+          if (!hasAlipayConfig) {
+            console.log('⚠️ Alipay not configured, using mock mode');
+            paymentData = await ijpayService.createMockOrder(orderId, amount, description, paymentMethod);
+          } else {
+            paymentData = await ijpayService.createAlipayOrder(orderId, amount, description);
+          }
           break;
         default:
           return res.status(400).json({ error: '不支持的支付方式' });

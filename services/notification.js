@@ -233,6 +233,139 @@ ${summaryList.join('\n')}
     return results;
   }
 
+  // ==================== Individual Channel Send Methods ====================
+  
+  /**
+   * Send notification via WxPusher
+   */
+  async sendWxPusher(title, content, uid) {
+    if (!uid) {
+      return { status: 'skipped', error: 'No UID provided' };
+    }
+
+    try {
+      const response = await axios.post(
+        'https://wxpusher.zjiecode.com/api/send/message',
+        {
+          appToken: this.config.wxpusher.token,
+          content: content,
+          summary: title,
+          contentType: 3, // Markdown
+          uids: [uid]
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000
+        }
+      );
+      
+      console.log(`✅ WxPusher notification sent successfully`);
+      return { status: 'success', statusCode: response.status };
+    } catch (error) {
+      console.error(`❌ WxPusher failed:`, error.message);
+      return { status: 'failed', error: error.message };
+    }
+  }
+
+  /**
+   * Send notification via PushPlus
+   */
+  async sendPushPlus(title, content, token) {
+    if (!token) {
+      return { status: 'skipped', error: 'No token provided' };
+    }
+
+    try {
+      const response = await axios.post(
+        'http://www.pushplus.plus/send',
+        {
+          token: token,
+          title: title,
+          content: content,
+          template: 'markdown'
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000
+        }
+      );
+      
+      console.log(`✅ PushPlus notification sent successfully`);
+      return { status: 'success', statusCode: response.status };
+    } catch (error) {
+      console.error(`❌ PushPlus failed:`, error.message);
+      return { status: 'failed', error: error.message };
+    }
+  }
+
+  /**
+   * Send notification via Resend Email
+   */
+  async sendResendEmail(title, content, email) {
+    if (!email) {
+      return { status: 'skipped', error: 'No email provided' };
+    }
+
+    try {
+      const htmlContent = content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      
+      const response = await axios.post(
+        'https://api.resend.com/emails',
+        {
+          from: 'onboarding@resend.dev',
+          to: email,
+          subject: title,
+          html: htmlContent
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.config.resend.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }
+      );
+      
+      console.log(`✅ Resend email sent successfully`);
+      return { status: 'success', statusCode: response.status };
+    } catch (error) {
+      console.error(`❌ Resend email failed:`, error.message);
+      return { status: 'failed', error: error.message };
+    }
+  }
+
+  /**
+   * Send notification via Telegram
+   */
+  async sendTelegram(title, content, chatId) {
+    if (!chatId) {
+      return { status: 'skipped', error: 'No chat ID provided' };
+    }
+
+    try {
+      const text = `*${title}*\n\n${content}`.replace(/### /g, '').replace(/\*\*(.*?)\*\*/g, '*$1*');
+      
+      const response = await axios.post(
+        `https://api.telegram.org/bot${this.config.telegram.botToken}/sendMessage`,
+        {
+          chat_id: chatId,
+          text: text,
+          parse_mode: 'Markdown'
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000
+        }
+      );
+      
+      console.log(`✅ Telegram notification sent successfully`);
+      return { status: 'success', statusCode: response.status };
+    } catch (error) {
+      console.error(`❌ Telegram failed:`, error.message);
+      return { status: 'failed', error: error.message };
+    }
+  }
+
   // ==================== NEW: Video Processing Notifications ====================
   
   /**
@@ -248,21 +381,37 @@ ${summaryList.join('\n')}
       telegram: { status: 'skipped', error: 'Not configured' }
     };
 
-    // Send to all configured admin channels
+    // Send to all configured admin channels (with error isolation)
     if (this.config.wxpusher.token && this.config.wxpusher.uid) {
-      results.wxpusher = await this.sendWxPusher(title, content, this.config.wxpusher.uid);
+      try {
+        results.wxpusher = await this.sendWxPusher(title, content, this.config.wxpusher.uid);
+      } catch (error) {
+        results.wxpusher = { status: 'failed', error: error.message };
+      }
     }
 
     if (this.config.pushplus.token) {
-      results.pushplus = await this.sendPushPlus(title, content, this.config.pushplus.token);
+      try {
+        results.pushplus = await this.sendPushPlus(title, content, this.config.pushplus.token);
+      } catch (error) {
+        results.pushplus = { status: 'failed', error: error.message };
+      }
     }
 
     if (this.config.resend.apiKey && this.config.resend.toEmail) {
-      results.resend = await this.sendResend(title, content, this.config.resend.toEmail);
+      try {
+        results.resend = await this.sendResendEmail(title, content, this.config.resend.toEmail);
+      } catch (error) {
+        results.resend = { status: 'failed', error: error.message };
+      }
     }
 
     if (this.config.telegram.botToken && this.config.telegram.chatId) {
-      results.telegram = await this.sendTelegram(title, content, this.config.telegram.chatId);
+      try {
+        results.telegram = await this.sendTelegram(title, content, this.config.telegram.chatId);
+      } catch (error) {
+        results.telegram = { status: 'failed', error: error.message };
+      }
     }
 
     return results;
@@ -455,29 +604,49 @@ ${summaryList.join('\n')}
     `);
     const allowedChannels = enabledChannels.rows.map(r => r.channel);
 
-    // Send to each configured channel
-    if (user.wxpusher_uid && allowedChannels.includes('wxpusher')) {
-      results.wxpusher = await this.sendWxPusher(title, content, user.wxpusher_uid);
-      await this.logNotification(user.id, notificationType, 'wxpusher', title, content, 
-        results.wxpusher.status, results.wxpusher.error);
+    // Send to each configured channel (with error isolation)
+    if (user.wxpusher_uid && user.wxpusher_token && allowedChannels.includes('wxpusher')) {
+      try {
+        results.wxpusher = await this.sendWxPusher(title, content, user.wxpusher_uid);
+        await this.logNotification(user.id, notificationType, 'wxpusher', title, content, 
+          results.wxpusher.status, results.wxpusher.error);
+      } catch (error) {
+        results.wxpusher = { status: 'failed', error: error.message };
+        await this.logNotification(user.id, notificationType, 'wxpusher', title, content, 'failed', error.message);
+      }
     }
 
     if (user.pushplus_token && allowedChannels.includes('pushplus')) {
-      results.pushplus = await this.sendPushPlus(title, content, user.pushplus_token);
-      await this.logNotification(user.id, notificationType, 'pushplus', title, content,
-        results.pushplus.status, results.pushplus.error);
+      try {
+        results.pushplus = await this.sendPushPlus(title, content, user.pushplus_token);
+        await this.logNotification(user.id, notificationType, 'pushplus', title, content,
+          results.pushplus.status, results.pushplus.error);
+      } catch (error) {
+        results.pushplus = { status: 'failed', error: error.message };
+        await this.logNotification(user.id, notificationType, 'pushplus', title, content, 'failed', error.message);
+      }
     }
 
     if (user.resend_email && allowedChannels.includes('resend')) {
-      results.resend = await this.sendResendEmail(title, content, user.resend_email);
-      await this.logNotification(user.id, notificationType, 'resend', title, content,
-        results.resend.status, results.resend.error);
+      try {
+        results.resend = await this.sendResendEmail(title, content, user.resend_email);
+        await this.logNotification(user.id, notificationType, 'resend', title, content,
+          results.resend.status, results.resend.error);
+      } catch (error) {
+        results.resend = { status: 'failed', error: error.message };
+        await this.logNotification(user.id, notificationType, 'resend', title, content, 'failed', error.message);
+      }
     }
 
-    if (user.telegram_chat_id && allowedChannels.includes('telegram')) {
-      results.telegram = await this.sendTelegram(title, content, user.telegram_chat_id);
-      await this.logNotification(user.id, notificationType, 'telegram', title, content,
-        results.telegram.status, results.telegram.error);
+    if (user.telegram_chat_id && user.telegram_bot_token && allowedChannels.includes('telegram')) {
+      try {
+        results.telegram = await this.sendTelegram(title, content, user.telegram_chat_id);
+        await this.logNotification(user.id, notificationType, 'telegram', title, content,
+          results.telegram.status, results.telegram.error);
+      } catch (error) {
+        results.telegram = { status: 'failed', error: error.message };
+        await this.logNotification(user.id, notificationType, 'telegram', title, content, 'failed', error.message);
+      }
     }
 
     console.log(`📢 Sent notifications to user ${user.email}:`, results);

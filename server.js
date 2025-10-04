@@ -62,6 +62,10 @@ app.use('/api/membership', membershipRoutes);
 const paymentRoutes = require('./routes/payment-routes');
 app.use('/api/payment', paymentRoutes);
 
+// Notification routes (channel config and logs)
+const notificationRoutes = require('./routes/notification-routes');
+app.use('/api/notifications', notificationRoutes);
+
 // Multer configuration for file upload
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
@@ -465,34 +469,70 @@ app.post('/api/process', authenticate, async (req, res) => {
     const results = [];
     const totalVideos = videoIds.length;
 
+    // Get user info for notifications
+    const userResult = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = userResult.rows[0];
+
     for (let i = 0; i < videoIds.length; i++) {
       const videoId = videoIds[i];
       const videoIndex = i + 1;
       
-      // Deduct balance for each video (skip for admin)
-      if (!req.user.is_admin) {
+      try {
+        // Get video data
+        const videoData = await db.videos.findById(videoId);
+        
+        // 🆕 Send processing start notification to admin
         try {
-          await paymentService.deductBalance(
-            req.user.id, 
-            PROCESSING_COST, 
-            `视频处理 - ${videoId}`,
-            videoId
-          );
-          console.log(`💰 Deducted ¥${PROCESSING_COST} from user ${req.user.id} for video ${videoId}`);
-        } catch (balanceError) {
-          console.error(`❌ Failed to deduct balance for video ${videoId}:`, balanceError);
-          // Continue processing but log the error
+          await notificationService.sendProcessingStartNotification(user, videoData);
+          console.log(`📢 Sent processing start notification for video ${videoId}`);
+        } catch (notifyError) {
+          console.error('Failed to send start notification:', notifyError);
+        }
+        
+        // Deduct balance for each video (skip for admin)
+        if (!req.user.is_admin) {
+          try {
+            await paymentService.deductBalance(
+              req.user.id, 
+              PROCESSING_COST, 
+              `视频处理 - ${videoId}`,
+              videoId
+            );
+            console.log(`💰 Deducted ¥${PROCESSING_COST} from user ${req.user.id} for video ${videoId}`);
+          } catch (balanceError) {
+            console.error(`❌ Failed to deduct balance for video ${videoId}:`, balanceError);
+          }
+        }
+        
+        // Process video
+        const result = await processVideoFile(videoId, videoIndex, totalVideos);
+        const video = await db.videos.findById(videoId);
+        const chapters = await db.chapters.findByVideoId(videoId);
+        
+        results.push({
+          ...video,
+          chapterCount: chapters.length
+        });
+        
+        // 🆕 Send processing success notification to member
+        try {
+          await notificationService.sendProcessingSuccessNotification(user, video, chapters);
+          console.log(`📧 Sent success notification to member: ${user.email}`);
+        } catch (notifyError) {
+          console.error('Failed to send success notification:', notifyError);
+        }
+      } catch (processError) {
+        console.error(`❌ Processing failed for video ${videoId}:`, processError);
+        
+        // 🆕 Send processing failure notification to admin
+        try {
+          const failedVideo = await db.videos.findById(videoId);
+          await notificationService.sendProcessingFailureNotification(user, failedVideo);
+          console.log(`📢 Sent failure notification for video ${videoId}`);
+        } catch (notifyError) {
+          console.error('Failed to send failure notification:', notifyError);
         }
       }
-      
-      const result = await processVideoFile(videoId, videoIndex, totalVideos);
-      const video = await db.videos.findById(videoId);
-      const chapters = await db.chapters.findByVideoId(videoId);
-      
-      results.push({
-        ...video,
-        chapterCount: chapters.length
-      });
     }
 
     const totalTime = (Date.now() - startTime) / 1000;

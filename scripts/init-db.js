@@ -325,6 +325,28 @@ const initializeDatabase = async () => {
       ON CONFLICT (channel) DO NOTHING;
     `);
     console.log('✅ Inserted default notification channels');
+    
+    // Create notification_logs table (通知发送记录)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS notification_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        notification_type VARCHAR(50) NOT NULL,
+        channel VARCHAR(50),
+        title TEXT,
+        content TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        error_message TEXT,
+        sent_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Created table: notification_logs');
+    
+    // Create index for notification logs
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_notification_logs_user_id ON notification_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notification_logs_sent_at ON notification_logs(sent_at);
+    `);
 
     // Insert default membership levels
     await client.query(`

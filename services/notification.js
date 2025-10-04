@@ -404,10 +404,12 @@ ${summaryList.join('\n')}
    * @param {Object} user - User object with notification config
    * @param {String} title - Notification title
    * @param {String} content - Notification content
+   * @param {String} notificationType - Type of notification (e.g., 'video_success')
    */
-  async sendToUser(user, title, content) {
+  async sendToUser(user, title, content, notificationType = 'custom') {
     if (!user.notification_enabled) {
       console.log(`⚠️ Notifications disabled for user: ${user.email}`);
+      await this.logNotification(user.id, notificationType, null, title, content, 'skipped', 'Notifications disabled');
       return { success: false, reason: 'notifications_disabled' };
     }
 
@@ -423,22 +425,52 @@ ${summaryList.join('\n')}
     // Send to each configured channel
     if (user.wxpusher_uid && allowedChannels.includes('wxpusher')) {
       results.wxpusher = await this.sendWxPusher(title, content, user.wxpusher_uid);
+      await this.logNotification(user.id, notificationType, 'wxpusher', title, content, 
+        results.wxpusher.status, results.wxpusher.error);
     }
 
     if (user.pushplus_token && allowedChannels.includes('pushplus')) {
       results.pushplus = await this.sendPushPlus(title, content, user.pushplus_token);
+      await this.logNotification(user.id, notificationType, 'pushplus', title, content,
+        results.pushplus.status, results.pushplus.error);
     }
 
     if (user.resend_email && allowedChannels.includes('resend')) {
       results.resend = await this.sendResendEmail(title, content, user.resend_email);
+      await this.logNotification(user.id, notificationType, 'resend', title, content,
+        results.resend.status, results.resend.error);
     }
 
     if (user.telegram_chat_id && allowedChannels.includes('telegram')) {
       results.telegram = await this.sendTelegram(title, content, user.telegram_chat_id);
+      await this.logNotification(user.id, notificationType, 'telegram', title, content,
+        results.telegram.status, results.telegram.error);
     }
 
     console.log(`📢 Sent notifications to user ${user.email}:`, results);
     return results;
+  }
+
+  /**
+   * Log notification to database
+   * @param {Number} userId - User ID
+   * @param {String} notificationType - Type of notification
+   * @param {String} channel - Channel used
+   * @param {String} title - Notification title
+   * @param {String} content - Notification content
+   * @param {String} status - Status (success/failed/skipped)
+   * @param {String} errorMessage - Error message if failed
+   */
+  async logNotification(userId, notificationType, channel, title, content, status, errorMessage = null) {
+    try {
+      const db = require('../db/database');
+      await db.query(`
+        INSERT INTO notification_logs (user_id, notification_type, channel, title, content, status, error_message)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [userId, notificationType, channel, title, content, status, errorMessage]);
+    } catch (error) {
+      console.error('Failed to log notification:', error);
+    }
   }
 }
 

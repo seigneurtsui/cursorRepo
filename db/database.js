@@ -87,10 +87,10 @@ const db = {
       const params = [];
       let paramCount = 1;
 
-      // Filter by user_id (for data isolation)
-      if (filters.userId) {
-        query += ` AND v.user_id = $${paramCount}`;
-        params.push(filters.userId);
+      // Filter by user_id(s) (for data isolation and admin filtering)
+      if (filters.userIds && filters.userIds.length > 0) {
+        query += ` AND v.user_id = ANY($${paramCount}::int[])`;
+        params.push(filters.userIds);
         paramCount++;
       }
 
@@ -111,7 +111,7 @@ const db = {
           LEFT JOIN users u ON v.user_id = u.id
           LEFT JOIN chapters c ON v.id = c.video_id
           WHERE 1=1
-          ${filters.userId ? `AND v.user_id = $1` : ''}
+          ${filters.userIds && filters.userIds.length > 0 ? `AND v.user_id = ANY($1::int[])` : ''}
           ${filters.status ? `AND v.status = $${filters.userId ? 2 : 1}` : ''}
           AND (
             v.original_name ILIKE $${paramCount} OR 
@@ -159,10 +159,10 @@ const db = {
       const params = [];
       let paramCount = 1;
 
-      // Filter by user_id (for data isolation)
-      if (filters.userId) {
-        query += ` AND user_id = $${paramCount}`;
-        params.push(filters.userId);
+      // Filter by user_id(s) (for data isolation and admin filtering)
+      if (filters.userIds && filters.userIds.length > 0) {
+        query += ` AND user_id = ANY($${paramCount}::int[])`;
+        params.push(filters.userIds);
         paramCount++;
       }
 

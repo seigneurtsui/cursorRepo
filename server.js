@@ -556,8 +556,22 @@ app.get('/api/videos', authenticate, async (req, res) => {
       keyword,
       status,
       startDate,
-      endDate
+      endDate,
+      userIds // Admin can filter by multiple user IDs (comma-separated)
     } = req.query;
+
+    // Parse userIds if provided (admin only)
+    let userIdFilter = null;
+    if (req.user.is_admin) {
+      if (userIds) {
+        // Admin specified specific users to filter
+        userIdFilter = userIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      }
+      // If userIdFilter is null or empty array, admin sees all users
+    } else {
+      // Regular users only see their own videos
+      userIdFilter = [req.user.id];
+    }
 
     const filters = {
       keyword,
@@ -566,7 +580,7 @@ app.get('/api/videos', authenticate, async (req, res) => {
       endDate,
       limit: limit === 'ALL' ? null : limit,
       offset: limit === 'ALL' ? 0 : (parseInt(page) - 1) * parseInt(limit),
-      userId: req.user.is_admin ? null : req.user.id // Admin can see all, users see only their own
+      userIds: userIdFilter // Pass array of user IDs or null for all
     };
 
     const videos = await db.videos.findAll(filters);
@@ -575,7 +589,7 @@ app.get('/api/videos', authenticate, async (req, res) => {
       status, 
       startDate, 
       endDate,
-      userId: req.user.is_admin ? null : req.user.id
+      userIds: userIdFilter
     });
 
     // Get chapter counts for each video

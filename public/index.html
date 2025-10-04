@@ -215,14 +215,41 @@
       <div class="section-header">
         <h3>📹 视频列表</h3>
         <div class="pagination-controls">
-          <!-- Admin Only: User Filter -->
-          <div id="adminUserFilterContainer" style="display: none; margin-right: 15px;">
+          <!-- Admin Only: Enhanced User Filter -->
+          <div id="adminUserFilterContainer" style="display: none; margin-right: 15px; position: relative;">
             <label style="margin-right: 5px;">👤 会员筛选：</label>
-            <select id="adminUserFilter" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #ddd; min-width: 200px;">
-              <option value="">全部会员</option>
-            </select>
-            <button class="btn btn-success" onclick="exportAllUsersVideos()" style="margin-left: 10px; padding: 8px 16px; font-size: 14px;">
-              📥 导出全部会员视频Excel
+            <div style="display: inline-block; position: relative;">
+              <button id="userFilterButton" onclick="toggleUserFilterDropdown()" style="padding: 8px 12px; border-radius: 5px; border: 1px solid #ddd; min-width: 220px; background: white; cursor: pointer; text-align: left; position: relative;">
+                <span id="userFilterButtonText">全部会员</span>
+                <span style="float: right;">▼</span>
+              </button>
+              
+              <!-- Custom Dropdown -->
+              <div id="userFilterDropdown" style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #ddd; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 300px; max-height: 400px; overflow: hidden; z-index: 1000; margin-top: 2px;">
+                <!-- Search Box -->
+                <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                  <input type="text" id="userFilterSearch" placeholder="🔍 搜索会员..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                
+                <!-- Control Buttons -->
+                <div style="padding: 8px 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                  <button onclick="toggleAllUsers()" style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    全选/取消
+                  </button>
+                  <button onclick="applyUserFilter()" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    应用筛选
+                  </button>
+                </div>
+                
+                <!-- User List -->
+                <div id="userFilterList" style="max-height: 280px; overflow-y: auto; padding: 5px;">
+                  <!-- Options will be loaded here -->
+                </div>
+              </div>
+            </div>
+            
+            <button class="btn btn-success" onclick="exportFilteredVideos()" style="margin-left: 10px; padding: 8px 16px; font-size: 14px;">
+              📥 导出筛选视频Excel
             </button>
           </div>
           

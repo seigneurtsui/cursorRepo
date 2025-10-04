@@ -75,6 +75,10 @@ async function checkAuth() {
 }
 
 // Load admin user filter dropdown (for video list header)
+// Global variables for user filter
+let allUsersList = [];
+let selectedUserIds = [];
+
 async function loadAdminUserFilter() {
   try {
     const token = localStorage.getItem('token');
@@ -85,23 +89,180 @@ async function loadAdminUserFilter() {
     const result = await response.json();
     
     if (result.success) {
-      const filterSelect = document.getElementById('adminUserFilter');
-      if (filterSelect) {
-        const optionsHTML = result.users
-          .filter(u => !u.is_admin) // Exclude admins from filter
-          .map(user => 
-            `<option value="${user.id}">${user.username} (${user.email})</option>`
-          ).join('');
-        filterSelect.innerHTML = '<option value="">全部会员</option>' + optionsHTML;
-        
-        // Add change event listener
-        filterSelect.addEventListener('change', function() {
-          applyFilters();
+      // Store all users (exclude admins)
+      allUsersList = result.users.filter(u => !u.is_admin);
+      
+      // Render user filter list
+      renderUserFilterList();
+      
+      // Add search event listener
+      const searchInput = document.getElementById('userFilterSearch');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          renderUserFilterList(this.value.trim());
         });
       }
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('userFilterDropdown');
+        const button = document.getElementById('userFilterButton');
+        if (dropdown && button && 
+            !dropdown.contains(event.target) && 
+            !button.contains(event.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
     }
   } catch (error) {
     console.error('加载会员列表失败:', error);
+  }
+}
+
+// Render user filter list with optional search
+function renderUserFilterList(searchTerm = '') {
+  const listContainer = document.getElementById('userFilterList');
+  if (!listContainer) return;
+  
+  // Filter users based on search
+  let filteredUsers = allUsersList;
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    filteredUsers = allUsersList.filter(user => 
+      user.username.toLowerCase().includes(term) || 
+      user.email.toLowerCase().includes(term)
+    );
+  }
+  
+  if (filteredUsers.length === 0) {
+    listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">未找到匹配的会员</div>';
+    return;
+  }
+  
+  const html = filteredUsers.map(user => {
+    const isChecked = selectedUserIds.includes(user.id);
+    return `
+      <label style="display: block; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #f5f5f5; user-select: none;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+        <input type="checkbox" value="${user.id}" ${isChecked ? 'checked' : ''} 
+               onchange="handleUserCheckboxChange(${user.id})" 
+               style="margin-right: 8px; cursor: pointer;">
+        <span style="font-weight: 500;">${user.username}</span>
+        <span style="color: #666; font-size: 12px; margin-left: 5px;">(${user.email})</span>
+      </label>
+    `;
+  }).join('');
+  
+  listContainer.innerHTML = html;
+}
+
+// Toggle user filter dropdown
+function toggleUserFilterDropdown() {
+  const dropdown = document.getElementById('userFilterDropdown');
+  if (dropdown) {
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    
+    // Focus search input when opening
+    if (dropdown.style.display === 'block') {
+      const searchInput = document.getElementById('userFilterSearch');
+      if (searchInput) {
+        setTimeout(() => searchInput.focus(), 100);
+      }
+    }
+  }
+}
+
+// Handle checkbox change
+function handleUserCheckboxChange(userId) {
+  const index = selectedUserIds.indexOf(userId);
+  if (index > -1) {
+    selectedUserIds.splice(index, 1);
+  } else {
+    selectedUserIds.push(userId);
+  }
+  updateUserFilterButtonText();
+}
+
+// Toggle all users selection
+function toggleAllUsers() {
+  const searchTerm = document.getElementById('userFilterSearch')?.value.trim() || '';
+  
+  // Filter users based on current search
+  let filteredUsers = allUsersList;
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    filteredUsers = allUsersList.filter(user => 
+      user.username.toLowerCase().includes(term) || 
+      user.email.toLowerCase().includes(term)
+    );
+  }
+  
+  if (filteredUsers.length === 0) return;
+  
+  // Check if all filtered users are selected
+  const allSelected = filteredUsers.every(user => selectedUserIds.includes(user.id));
+  
+  if (allSelected) {
+    // Deselect all filtered users
+    filteredUsers.forEach(user => {
+      const index = selectedUserIds.indexOf(user.id);
+      if (index > -1) {
+        selectedUserIds.splice(index, 1);
+      }
+    });
+  } else {
+    // Select all filtered users
+    filteredUsers.forEach(user => {
+      if (!selectedUserIds.includes(user.id)) {
+        selectedUserIds.push(user.id);
+      }
+    });
+  }
+  
+  // Re-render list
+  renderUserFilterList(searchTerm);
+  updateUserFilterButtonText();
+}
+
+// Update button text based on selection
+function updateUserFilterButtonText() {
+  const buttonText = document.getElementById('userFilterButtonText');
+  if (!buttonText) return;
+  
+  if (selectedUserIds.length === 0) {
+    buttonText.textContent = '全部会员';
+  } else if (selectedUserIds.length === 1) {
+    const user = allUsersList.find(u => u.id === selectedUserIds[0]);
+    buttonText.textContent = user ? `${user.username}` : '已选择 1 个会员';
+  } else {
+    buttonText.textContent = `已选择 ${selectedUserIds.length} 个会员`;
+  }
+}
+
+// Apply user filter
+function applyUserFilter() {
+  // Close dropdown
+  const dropdown = document.getElementById('userFilterDropdown');
+  if (dropdown) {
+    dropdown.style.display = 'none';
+  }
+  
+  // Clear search
+  const searchInput = document.getElementById('userFilterSearch');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  
+  // Update button text
+  updateUserFilterButtonText();
+  
+  // Apply filters
+  applyFilters();
+  
+  // Show toast
+  if (selectedUserIds.length === 0) {
+    showToast('✅ 已清除会员筛选，显示全部会员视频', 'success');
+  } else {
+    showToast(`✅ 已应用筛选，显示 ${selectedUserIds.length} 个会员的视频`, 'success');
   }
 }
 
@@ -620,19 +781,18 @@ function resetFilters() {
   document.getElementById('filterStartDate').value = '';
   document.getElementById('filterEndDate').value = '';
   
-  // Admin: reset user filters (both locations)
-  const adminUserFilter = document.getElementById('adminUserFilter');
-  if (adminUserFilter) {
-    adminUserFilter.value = '';
-  }
+  // Admin: reset user filter
+  selectedUserIds = [];
+  updateUserFilterButtonText();
+  renderUserFilterList();
   
   currentFilters = {};
   currentPage = 1;
   loadVideos();
 }
 
-// Export all users' videos to Excel (admin only) - from video list header
-async function exportAllUsersVideos() {
+// Export filtered videos to Excel (admin only) - from video list header
+async function exportFilteredVideos() {
   try {
     const token = localStorage.getItem('token');
     
@@ -645,10 +805,13 @@ async function exportAllUsersVideos() {
     if (currentFilters.status) params.append('status', currentFilters.status);
     if (currentFilters.startDate) params.append('startDate', currentFilters.startDate);
     if (currentFilters.endDate) params.append('endDate', currentFilters.endDate);
-    if (currentFilters.userId) params.append('userId', currentFilters.userId);
+    if (currentFilters.userIds) params.append('userIds', currentFilters.userIds);
     
     // Show loading toast
-    showToast('正在获取视频数据...', 'info');
+    const filterInfo = selectedUserIds.length > 0 
+      ? `（已筛选 ${selectedUserIds.length} 个会员）` 
+      : '（全部会员）';
+    showToast(`正在获取视频数据... ${filterInfo}`, 'info');
     
     // Get videos with current filters
     const response = await fetch(`${API_BASE}/api/videos?${params.toString()}`, {
@@ -667,13 +830,12 @@ async function exportAllUsersVideos() {
     }
     
     const videoCount = result.data.length;
-    const userInfo = currentFilters.userId ? '（已筛选）' : '（全部会员）';
     
-    if (!confirm(`确定要导出${videoCount}个视频的信息吗？${userInfo}\n\n导出的Excel文件将包含：\n• 视频详情\n• 上传者用户名和邮箱\n• 章节列表`)) {
+    if (!confirm(`确定要导出 ${videoCount} 个视频的信息吗？${filterInfo}\n\n导出的Excel文件将包含：\n• 视频详情\n• 上传者用户名和邮箱\n• 章节列表`)) {
       return;
     }
     
-    showToast(`正在导出${videoCount}个视频...`, 'info');
+    showToast(`正在导出 ${videoCount} 个视频...`, 'info');
     
     const videoIds = result.data.map(v => v.id);
     

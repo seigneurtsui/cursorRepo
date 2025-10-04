@@ -1923,9 +1923,18 @@
                 
                 const responseData = await response.json();
                 console.log('📦 loadAdminChannelFilter: 原始响应', responseData);
-                const channels = Array.isArray(responseData) ? responseData : (responseData.channels || responseData.data || []);
-                allChannelsData = channels;
-                renderAdminChannelList(channels);
+                
+                // 提取数组
+                let channelData = Array.isArray(responseData) ? responseData : (responseData.channels || responseData.data || []);
+                
+                // 如果是对象数组 [{channel_id, channel_title}]，提取 channel_title
+                if (channelData.length > 0 && typeof channelData[0] === 'object' && channelData[0].channel_title) {
+                    channelData = channelData.map(ch => ch.channel_title);
+                }
+                
+                console.log('✅ loadAdminChannelFilter: 处理后的频道', channelData);
+                allChannelsData = channelData;
+                renderAdminChannelList(channelData);
             } catch (error) {
                 console.error('加载频道列表失败:', error);
             }

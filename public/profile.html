@@ -170,6 +170,100 @@
       <div id="referralListContainer" style="margin-top: 20px;"></div>
     </div>
 
+    <!-- 通知设置 -->
+    <div class="card">
+      <h3>📢 通知设置</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 20px;">配置您的通知接收方式，除默认邮件通知外，还可以选择其他渠道</p>
+      
+      <div style="margin-bottom: 25px; padding: 15px; background: #e7f3ff; border-left: 4px solid #007bff; border-radius: 6px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="notificationEnabled" checked style="width: 18px; height: 18px;">
+          <span style="font-weight: 600; font-size: 15px;">✅ 启用通知接收</span>
+        </label>
+        <div style="font-size: 12px; color: #666; margin-top: 8px; margin-left: 28px;">
+          关闭后将不会收到任何通知（包括邮件）
+        </div>
+      </div>
+      
+      <div id="notificationChannels">
+        <!-- WxPusher -->
+        <div class="notification-channel" data-channel="wxpusher" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span style="font-size: 24px;">💚</span>
+            <h4 style="margin: 0;">WxPusher 微信推送</h4>
+          </div>
+          <input type="text" id="wxpusher_uid" placeholder="输入您的 WxPusher UID (例如: UID_xxx)" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <a href="https://wxpusher.zjiecode.com/" target="_blank" style="color: #007bff;">📖 如何获取UID？</a>
+            <span style="margin-left: 10px;">扫码关注公众号即可获得</span>
+          </div>
+        </div>
+        
+        <!-- PushPlus -->
+        <div class="notification-channel" data-channel="pushplus" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span style="font-size: 24px;">📱</span>
+            <h4 style="margin: 0;">PushPlus 多平台推送</h4>
+          </div>
+          <input type="text" id="pushplus_token" placeholder="输入您的 PushPlus Token" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <a href="http://www.pushplus.plus/" target="_blank" style="color: #007bff;">📖 如何获取Token？</a>
+            <span style="margin-left: 10px;">支持微信、企业微信、钉钉等</span>
+          </div>
+        </div>
+        
+        <!-- Resend Email -->
+        <div class="notification-channel" data-channel="resend" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span style="font-size: 24px;">📧</span>
+            <h4 style="margin: 0;">Resend 邮件通知</h4>
+          </div>
+          <input type="email" id="resend_email" placeholder="输入接收通知的邮箱地址" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <span>除默认QQ邮箱外的额外邮件通知</span>
+          </div>
+        </div>
+        
+        <!-- Telegram -->
+        <div class="notification-channel" data-channel="telegram" style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span style="font-size: 24px;">✈️</span>
+            <h4 style="margin: 0;">Telegram 电报通知</h4>
+          </div>
+          <input type="text" id="telegram_chat_id" placeholder="输入您的 Telegram Chat ID" 
+                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 12px; color: #666;">
+            <a href="https://core.telegram.org/bots" target="_blank" style="color: #007bff;">📖 如何获取Chat ID？</a>
+            <span style="margin-left: 10px;">联系 @userinfobot 获取您的ID</span>
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-primary" onclick="saveNotificationConfig()" style="flex: 1; font-size: 16px;">
+          💾 保存通知设置
+        </button>
+        <button class="btn-secondary" onclick="testNotification()" style="flex: 1; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px;">
+          🧪 测试通知
+        </button>
+      </div>
+      
+      <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+        <div style="font-size: 13px; color: #856404;">
+          <strong>💡 提示：</strong>
+          <ul style="margin: 8px 0 0 20px; padding: 0;">
+            <li>所有配置为可选，至少配置一个渠道即可接收通知</li>
+            <li>默认始终会发送邮件到注册邮箱（视频处理成功时）</li>
+            <li>管理员可能会限制某些渠道的使用</li>
+            <li>点击"测试通知"可以验证配置是否正确</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <!-- 修改密码 -->
     <div class="card">
       <h3>🔐 修改密码</h3>
@@ -296,6 +390,9 @@
           
           // Load referral code and stats
           loadReferralInfo();
+          
+          // Load notification config
+          loadNotificationConfig();
           
           loadTransactions();
         } else {
@@ -899,6 +996,123 @@
       }).catch(() => {
         alert('复制失败，您的推荐码是：' + code);
       });
+    }
+
+    // ==================== Notification Configuration ====================
+    
+    async function loadNotificationConfig() {
+      const token = localStorage.getItem('token');
+      
+      try {
+        // Get user config
+        const userConfigResponse = await fetch(`${API_BASE}/api/notifications/user/config`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const config = await userConfigResponse.json();
+        
+        // Get available channels
+        const channelsResponse = await fetch(`${API_BASE}/api/notifications/channels`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const channelSettings = await channelsResponse.json();
+        
+        // Fill form
+        document.getElementById('notificationEnabled').checked = config.notification_enabled !== false;
+        document.getElementById('wxpusher_uid').value = config.wxpusher_uid || '';
+        document.getElementById('pushplus_token').value = config.pushplus_token || '';
+        document.getElementById('resend_email').value = config.resend_email || '';
+        document.getElementById('telegram_chat_id').value = config.telegram_chat_id || '';
+        
+        // Disable channels that admin has turned off
+        channelSettings.forEach(ch => {
+          const element = document.querySelector(`[data-channel="${ch.channel}"]`);
+          if (element && !ch.enabled) {
+            element.style.opacity = '0.5';
+            element.style.pointerEvents = 'none';
+            const input = element.querySelector('input');
+            if (input) {
+              input.disabled = true;
+              input.placeholder += ' (管理员已禁用此渠道)';
+            }
+          }
+        });
+      } catch (error) {
+        console.error('加载通知配置失败:', error);
+      }
+    }
+    
+    async function saveNotificationConfig() {
+      const token = localStorage.getItem('token');
+      const btn = event.target;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>保存中...';
+      
+      const config = {
+        notification_enabled: document.getElementById('notificationEnabled').checked,
+        wxpusher_uid: document.getElementById('wxpusher_uid').value.trim(),
+        pushplus_token: document.getElementById('pushplus_token').value.trim(),
+        resend_email: document.getElementById('resend_email').value.trim(),
+        telegram_chat_id: document.getElementById('telegram_chat_id').value.trim()
+      };
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/user/config`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(config)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ 通知设置保存成功！');
+        } else {
+          alert('❌ 保存失败: ' + (result.error || '未知错误'));
+        }
+      } catch (error) {
+        console.error('保存通知配置失败:', error);
+        alert('❌ 保存失败: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💾 保存通知设置';
+      }
+    }
+    
+    async function testNotification() {
+      const token = localStorage.getItem('token');
+      const btn = event.target;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>测试中...';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/test`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ channel: 'all' })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          const channels = Object.keys(result.result);
+          const successCount = channels.filter(ch => result.result[ch].status === 'success').length;
+          alert(`✅ 测试通知已发送！\n\n成功: ${successCount}/${channels.length} 个渠道\n\n请检查您配置的通知渠道是否收到消息`);
+        } else {
+          alert('❌ 测试失败: ' + (result.error || '未知错误'));
+        }
+      } catch (error) {
+        console.error('测试通知失败:', error);
+        alert('❌ 测试失败: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🧪 测试通知';
+      }
     }
 
     loadProfile();

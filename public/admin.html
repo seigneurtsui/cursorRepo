@@ -135,6 +135,27 @@
       <h3>💳 最近交易</h3>
       <div id="transactionsTable" style="overflow-x: auto;">加载中...</div>
     </div>
+
+    <!-- 通知渠道管理 -->
+    <div class="card">
+      <h3>📢 通知渠道管理</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 15px;">控制会员可以使用的通知渠道</p>
+      <div id="channelControlList">加载中...</div>
+    </div>
+
+    <!-- 通知记录管理 -->
+    <div class="card">
+      <h3>📋 通知记录管理</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <p style="color: #666; font-size: 14px; margin: 0;">查看和导出所有发送给会员的通知记录</p>
+        <button class="btn btn-success" onclick="exportNotificationLogs()">
+          📥 导出通知记录Excel
+        </button>
+      </div>
+      <div id="notificationLogsList" style="max-height: 400px; overflow-y: auto;">
+        <div style="text-align: center; padding: 20px; color: #999;">点击上方按钮导出Excel查看通知记录</div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -199,6 +220,12 @@
         if (plansResult.success) {
           renderPlansTable(plansResult.plans);
         }
+
+        // Load notification channels
+        await loadChannelControls();
+        
+        // Load notification logs
+        await loadNotificationLogs();
 
       } catch (error) {
         console.error('加载数据失败:', error);
@@ -707,6 +734,167 @@
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/public/login.html';
+    }
+
+    // ==================== Notification Channel Control ====================
+    
+    async function loadChannelControls() {
+      const token = localStorage.getItem('token');
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/channels`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const channels = await response.json();
+        
+        const html = channels.map(ch => `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+            <div>
+              <strong style="font-size: 16px;">${ch.description}</strong>
+              <div style="font-size: 12px; color: #999; margin-top: 3px;">渠道标识: ${ch.channel}</div>
+            </div>
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+              <span style="font-size: 14px; font-weight: 600; color: ${ch.enabled ? '#28a745' : '#dc3545'};">
+                ${ch.enabled ? '✅ 已启用' : '❌ 已禁用'}
+              </span>
+              <input type="checkbox" ${ch.enabled ? 'checked' : ''} 
+                     onchange="toggleChannel('${ch.channel}', this.checked)"
+                     style="width: 20px; height: 20px; cursor: pointer;">
+            </label>
+          </div>
+        `).join('');
+        
+        document.getElementById('channelControlList').innerHTML = html || '<div style="color: #999; text-align: center; padding: 20px;">暂无渠道</div>';
+      } catch (error) {
+        console.error('加载渠道控制失败:', error);
+        document.getElementById('channelControlList').innerHTML = '<div style="color: #dc3545; text-align: center; padding: 20px;">加载失败</div>';
+      }
+    }
+    
+    async function toggleChannel(channel, enabled) {
+      const token = localStorage.getItem('token');
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/channels/${channel}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ enabled })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(`✅ ${channel} 已${enabled ? '启用' : '禁用'}`);
+          await loadChannelControls();
+        } else {
+          alert('❌ 操作失败: ' + (result.error || '未知错误'));
+          await loadChannelControls();
+        }
+      } catch (error) {
+        console.error('切换渠道失败:', error);
+        alert('❌ 操作失败: ' + error.message);
+        await loadChannelControls();
+      }
+    }
+    
+    // ==================== Notification Logs ====================
+    
+    async function loadNotificationLogs() {
+      const token = localStorage.getItem('token');
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/logs`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const logs = await response.json();
+        
+        if (logs.length === 0) {
+          document.getElementById('notificationLogsList').innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">暂无通知记录</div>';
+          return;
+        }
+        
+        const html = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>用户</th>
+                <th>类型</th>
+                <th>渠道</th>
+                <th>标题</th>
+                <th>状态</th>
+                <th>发送时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${logs.slice(0, 50).map(log => `
+                <tr>
+                  <td>${log.id}</td>
+                  <td>
+                    <div>${log.username || 'N/A'}</div>
+                    <small style="color: #999;">${log.email || ''}</small>
+                  </td>
+                  <td>${log.notification_type}</td>
+                  <td>${log.channel || 'all'}</td>
+                  <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+                      title="${log.title}">${log.title}</td>
+                  <td>
+                    <span style="color: ${log.status === 'success' ? '#28a745' : log.status === 'failed' ? '#dc3545' : '#ffc107'};">
+                      ${log.status === 'success' ? '✅ 成功' : log.status === 'failed' ? '❌ 失败' : '⏳ 待处理'}
+                    </span>
+                  </td>
+                  <td>${new Date(log.sent_at).toLocaleString('zh-CN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ${logs.length > 50 ? `<div style="text-align: center; color: #999; padding: 10px;">仅显示最近50条，导出Excel查看全部</div>` : ''}
+        `;
+        
+        document.getElementById('notificationLogsList').innerHTML = html;
+      } catch (error) {
+        console.error('加载通知记录失败:', error);
+        document.getElementById('notificationLogsList').innerHTML = '<div style="color: #dc3545; text-align: center; padding: 20px;">加载失败</div>';
+      }
+    }
+    
+    async function exportNotificationLogs() {
+      const token = localStorage.getItem('token');
+      const btn = event.target;
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ 导出中...';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/notifications/export-logs`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          throw new Error('导出失败');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `notification_logs_${Date.now()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showToast('✅ 通知记录已导出');
+      } catch (error) {
+        console.error('导出通知记录失败:', error);
+        alert('❌ 导出失败: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
     }
 
     loadAdminData();

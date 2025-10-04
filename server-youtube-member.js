@@ -745,9 +745,9 @@ app.get('/api/admin/users', authenticate, requireAdmin, async (req, res) => {
     }
 });
 
-// Serve index page
+// Serve index page (redirect to public folder)
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'temp_repo/upload-video-2-youtube/index.html'));
+    res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
 // Start server

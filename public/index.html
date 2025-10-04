@@ -801,8 +801,16 @@
                     throw new Error('登录已过期');
                 }
                 
-                currentUser = await response.json();
+                const responseData = await response.json();
+                console.log('✅ 原始响应:', responseData);
+                
+                // 提取 user 对象，并转换属性名
+                currentUser = responseData.user || responseData;
+                currentUser.isAdmin = currentUser.is_admin || currentUser.isAdmin || false;
+                currentUser.balance = currentUser.balance || responseData.balance || '0';
+                
                 console.log('✅ 用户信息:', currentUser);
+                console.log('👤 是否管理员:', currentUser.isAdmin);
                 
                 // 隐藏加载遮罩，显示主内容
                 console.log('🎨 显示主内容...');

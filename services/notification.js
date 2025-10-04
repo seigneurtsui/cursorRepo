@@ -232,6 +232,214 @@ ${summaryList.join('\n')}
     console.log(`📊 通知发送完成: 成功 ${successCount}, 失败 ${failedCount}, 跳过 ${skippedCount}`);
     return results;
   }
+
+  // ==================== NEW: Video Processing Notifications ====================
+  
+  /**
+   * Send notification when member starts video processing (to admin)
+   * @param {Object} user - User who started processing
+   * @param {Object} video - Video being processed
+   */
+  async sendProcessingStartNotification(user, video) {
+    const title = `🎬 视频处理开始 - ${user.username}`;
+    
+    const content = `### 新的视频处理任务
+
+**会员信息**:
+- 用户名: ${user.username}
+- 邮箱: ${user.email}
+- 会员ID: ${user.id}
+
+**视频信息**:
+- 文件名: ${video.original_name}
+- 文件大小: ${this.formatFileSize(video.file_size)}
+- 视频时长: ${this.formatVideoDuration(video.duration)}
+- 上传时间: ${this.formatTime(video.created_at)}
+- 开始处理: ${this.formatTime(new Date())}
+
+**系统状态**: 正在处理中...`;
+
+    const results = await this.sendAll(title, content);
+    console.log('📢 Processing start notification sent to admin:', results);
+    return results;
+  }
+
+  /**
+   * Send notification when video processing fails (to admin)
+   * @param {Object} user - User who owns the video
+   * @param {Object} video - Video that failed
+   */
+  async sendProcessingFailureNotification(user, video) {
+    const title = `❌ 视频处理失败 - ${user.username}`;
+    
+    const duration = this.calculateDuration(video.processing_started_at, video.processing_completed_at || new Date());
+    
+    const content = `### 视频处理失败报告
+
+**会员信息**:
+- 用户名: ${user.username}
+- 邮箱: ${user.email}
+- 会员ID: ${user.id}
+
+**视频信息**:
+- 文件名: ${video.original_name}
+- 文件大小: ${this.formatFileSize(video.file_size)}
+- 视频时长: ${this.formatVideoDuration(video.duration)}
+
+**处理信息**:
+- 开始时间: ${this.formatTime(video.processing_started_at)}
+- 失败时间: ${this.formatTime(new Date())}
+- 处理耗时: ${duration}
+
+**错误信息**: ${video.error_message || '未知错误'}
+
+⚠️ 请检查系统日志以获取详细信息`;
+
+    const results = await this.sendAll(title, content);
+    console.log('📢 Processing failure notification sent to admin:', results);
+    return results;
+  }
+
+  /**
+   * Send notification when video processing succeeds (to member via email)
+   * @param {Object} user - User who owns the video
+   * @param {Object} video - Video that succeeded
+   * @param {Array} chapters - Generated chapters
+   */
+  async sendProcessingSuccessNotification(user, video, chapters) {
+    const emailService = require('./email');
+    
+    const duration = this.calculateDuration(video.processing_started_at, video.processing_completed_at);
+    const chapterCount = chapters ? chapters.length : 0;
+    
+    let htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; }
+    .content { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px; }
+    .info-item { padding: 10px; border-bottom: 1px solid #dee2e6; }
+    .info-item:last-child { border-bottom: none; }
+    .label { font-weight: bold; color: #667eea; }
+    .chapter { background: white; padding: 10px; margin: 5px 0; border-left: 3px solid #667eea; }
+    .footer { text-align: center; margin-top: 20px; color: #999; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ 视频处理完成</h1>
+      <p>您的视频已成功生成章节</p>
+    </div>
+    
+    <div class="content">
+      <h2>视频信息</h2>
+      <div class="info-item">
+        <span class="label">文件名:</span> ${video.original_name}
+      </div>
+      <div class="info-item">
+        <span class="label">文件大小:</span> ${this.formatFileSize(video.file_size)}
+      </div>
+      <div class="info-item">
+        <span class="label">视频时长:</span> ${this.formatVideoDuration(video.duration)}
+      </div>
+      <div class="info-item">
+        <span class="label">章节数量:</span> ${chapterCount} 个
+      </div>
+      <div class="info-item">
+        <span class="label">处理耗时:</span> ${duration}
+      </div>
+    </div>`;
+
+    if (chapters && chapters.length > 0) {
+      htmlContent += `
+    <div class="content">
+      <h2>章节列表</h2>`;
+      
+      chapters.slice(0, 10).forEach((ch, idx) => {
+        htmlContent += `
+      <div class="chapter">
+        <strong>${idx + 1}. ${ch.title}</strong><br>
+        <small>⏱ ${this.formatVideoDuration(ch.start_time)} - ${this.formatVideoDuration(ch.end_time)}</small><br>
+        <small>${ch.description || ''}</small>
+      </div>`;
+      });
+      
+      if (chapters.length > 10) {
+        htmlContent += `<p>... 还有 ${chapters.length - 10} 个章节</p>`;
+      }
+      
+      htmlContent += `</div>`;
+    }
+
+    htmlContent += `
+    <div class="footer">
+      <p>登录系统查看完整内容: <a href="${process.env.BASE_URL || 'http://localhost:8051'}/public/index.html">视频章节生成器</a></p>
+      <p>此邮件由系统自动发送，请勿回复</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      await emailService.sendEmail(
+        user.email,
+        '✅ 视频章节生成完成',
+        htmlContent
+      );
+      console.log(`📧 Success notification sent to member: ${user.email}`);
+      return { success: true, email: user.email };
+    } catch (error) {
+      console.error('Failed to send success notification email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send notification to user using their configured channels
+   * @param {Object} user - User object with notification config
+   * @param {String} title - Notification title
+   * @param {String} content - Notification content
+   */
+  async sendToUser(user, title, content) {
+    if (!user.notification_enabled) {
+      console.log(`⚠️ Notifications disabled for user: ${user.email}`);
+      return { success: false, reason: 'notifications_disabled' };
+    }
+
+    const results = {};
+    const db = require('../db/database');
+
+    // Get enabled channels from admin settings
+    const enabledChannels = await db.query(`
+      SELECT channel FROM notification_channel_settings WHERE enabled = TRUE
+    `);
+    const allowedChannels = enabledChannels.rows.map(r => r.channel);
+
+    // Send to each configured channel
+    if (user.wxpusher_uid && allowedChannels.includes('wxpusher')) {
+      results.wxpusher = await this.sendWxPusher(title, content, user.wxpusher_uid);
+    }
+
+    if (user.pushplus_token && allowedChannels.includes('pushplus')) {
+      results.pushplus = await this.sendPushPlus(title, content, user.pushplus_token);
+    }
+
+    if (user.resend_email && allowedChannels.includes('resend')) {
+      results.resend = await this.sendResendEmail(title, content, user.resend_email);
+    }
+
+    if (user.telegram_chat_id && allowedChannels.includes('telegram')) {
+      results.telegram = await this.sendTelegram(title, content, user.telegram_chat_id);
+    }
+
+    console.log(`📢 Sent notifications to user ${user.email}:`, results);
+    return results;
+  }
 }
 
 module.exports = NotificationService;

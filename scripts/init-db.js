@@ -291,6 +291,40 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE;
     `);
     console.log('✅ Added membership columns to users table');
+    
+    // Add notification config columns to users table
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS wxpusher_uid VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS pushplus_token VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_email VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_enabled BOOLEAN DEFAULT TRUE;
+    `);
+    console.log('✅ Added notification config columns to users table');
+    
+    // Create notification_channel_settings table (通知渠道全局开关)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS notification_channel_settings (
+        id SERIAL PRIMARY KEY,
+        channel VARCHAR(50) UNIQUE NOT NULL,
+        enabled BOOLEAN DEFAULT TRUE,
+        description TEXT,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Created table: notification_channel_settings');
+    
+    // Insert default notification channels
+    await client.query(`
+      INSERT INTO notification_channel_settings (channel, enabled, description)
+      VALUES 
+        ('wxpusher', TRUE, 'WxPusher微信推送'),
+        ('pushplus', TRUE, 'PushPlus多平台推送'),
+        ('resend', TRUE, 'Resend邮件通知'),
+        ('telegram', TRUE, 'Telegram电报机器人')
+      ON CONFLICT (channel) DO NOTHING;
+    `);
+    console.log('✅ Inserted default notification channels');
 
     // Insert default membership levels
     await client.query(`

@@ -1165,8 +1165,11 @@
         }
 
         async function fetchVideos(page = currentPage) {
+            console.log('🎬 fetchVideos() 开始执行，page=', page);
             try {
                 const token = localStorage.getItem('token');
+                console.log('📝 Token存在:', !!token);
+                
                 let params = new URLSearchParams({
                     page,
                     limit: currentLimit,
@@ -1174,9 +1177,9 @@
                     sortOrder: currentSortOrder
                 });
                 
-                const searchTerm = document.getElementById('searchInput').value.trim();
-                const startDate = document.getElementById('startDate').value;
-                const endDate = document.getElementById('endDate').value;
+                const searchTerm = document.getElementById('searchInput')?.value.trim() || '';
+                const startDate = document.getElementById('startDate')?.value || '';
+                const endDate = document.getElementById('endDate')?.value || '';
                 
                 // 处理频道筛选（支持多选）
                 let channelFilter = '';
@@ -1194,28 +1197,40 @@
                 if (endDate) params.append('endDate', endDate);
                 if (currentFilterUserId) params.append('filterUserId', currentFilterUserId);
                 
-                const res = await fetch(`/api/videos-paginated?${params}`, {
+                const url = `/api/videos-paginated?${params}`;
+                console.log('📡 发送请求到:', url);
+                
+                const res = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
+                console.log('📥 收到响应:', res.status);
+                
                 if (res.status === 401) {
+                    console.warn('⚠️ 未授权，跳转到登录页');
                     window.location.href = '/public/login.html';
                     return;
                 }
                 
                 if (!res.ok) {
-                    console.error('获取视频失败');
+                    console.error('❌ 获取视频失败，状态码:', res.status);
                     return;
                 }
                 
                 const responseData = await res.json();
+                console.log('📦 收到数据:', responseData);
+                
                 const { data, pagination } = responseData;
+                console.log('📊 视频数量:', data?.length || 0);
                 
                 displayVideos(data);
                 displayPagination(pagination);
                 currentPage = pagination.page;
+                
+                console.log('✅ fetchVideos() 执行完成');
             } catch (err) {
-                console.error('获取视频数据错误:', err);
+                console.error('❌ fetchVideos() 错误:', err);
+                console.error('错误堆栈:', err.stack);
             }
         }
 

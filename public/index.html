@@ -1565,27 +1565,27 @@
             }
             
             // 搜索功能
-            const searchInput = document.getElementById('channel-search');
-            if (searchInput) {
-                searchInput.addEventListener('input', function(e) {
+            const normalSearchInput = document.getElementById('channel-search');
+            if (normalSearchInput) {
+                normalSearchInput.addEventListener('input', function(e) {
                     const searchTerm = e.target.value.trim();
                     renderChannelList(channelsData, searchTerm);
                     
-                    const clearSearchBtn = document.getElementById('clear-channel-search');
-                    if (clearSearchBtn) {
-                        clearSearchBtn.classList.toggle('hidden', !searchTerm);
+                    const clearBtn = document.getElementById('clear-channel-search');
+                    if (clearBtn) {
+                        clearBtn.classList.toggle('hidden', !searchTerm);
                     }
                 });
             }
             
             // 清除搜索
-            const clearSearchBtn = document.getElementById('clear-channel-search');
-            if (clearSearchBtn) {
-                clearSearchBtn.addEventListener('click', function() {
-                    const searchInput = document.getElementById('channel-search');
-                    if (searchInput) {
-                        searchInput.value = '';
-                        searchInput.dispatchEvent(new Event('input'));
+            const normalClearSearchBtn = document.getElementById('clear-channel-search');
+            if (normalClearSearchBtn) {
+                normalClearSearchBtn.addEventListener('click', function() {
+                    const input = document.getElementById('channel-search');
+                    if (input) {
+                        input.value = '';
+                        input.dispatchEvent(new Event('input'));
                     }
                 });
             }
@@ -1640,27 +1640,27 @@
             }
             
             // 搜索功能
-            const searchInput = document.getElementById('admin-channel-search');
-            if (searchInput) {
-                searchInput.addEventListener('input', function(e) {
+            const adminSearchInput = document.getElementById('admin-channel-search');
+            if (adminSearchInput) {
+                adminSearchInput.addEventListener('input', function(e) {
                     const searchTerm = e.target.value.trim();
                     renderAdminChannelList(allChannelsData, searchTerm);
                     
-                    const clearSearchBtn = document.getElementById('clear-admin-channel-search');
-                    if (clearSearchBtn) {
-                        clearSearchBtn.classList.toggle('hidden', !searchTerm);
+                    const clearBtn = document.getElementById('clear-admin-channel-search');
+                    if (clearBtn) {
+                        clearBtn.classList.toggle('hidden', !searchTerm);
                     }
                 });
             }
             
             // 清除搜索
-            const clearSearchBtn = document.getElementById('clear-admin-channel-search');
-            if (clearSearchBtn) {
-                clearSearchBtn.addEventListener('click', function() {
-                    const searchInput = document.getElementById('admin-channel-search');
-                    if (searchInput) {
-                        searchInput.value = '';
-                        searchInput.dispatchEvent(new Event('input'));
+            const adminClearSearchBtn = document.getElementById('clear-admin-channel-search');
+            if (adminClearSearchBtn) {
+                adminClearSearchBtn.addEventListener('click', function() {
+                    const input = document.getElementById('admin-channel-search');
+                    if (input) {
+                        input.value = '';
+                        input.dispatchEvent(new Event('input'));
                     }
                 });
             }

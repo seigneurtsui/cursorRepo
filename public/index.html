@@ -445,7 +445,7 @@
                                     onclick="openChannelModal()" 
                                     class="w-full bg-green-400 hover:bg-green-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center justify-center"
                                 >
-                                    <span class="mr-2">➕</span> 手动输入频道ID (¥5)
+                                    <span class="mr-2">➕</span> 输入频道并获取 (¥5)
                                 </button>
                             </div>
                             
@@ -2413,6 +2413,221 @@
             currentMemberFilter = adminSelectedMembers.map(m => m.id).join(',');
             applyFilters();
         }
+        
+        // ==================== 方式2：频道获取下拉选择功能 ====================
+        
+        // 切换输入模式
+        function switchChannelInputMode(mode) {
+            const manualBtn = document.getElementById('manualInputBtn');
+            const dropdownBtn = document.getElementById('dropdownSelectBtn');
+            const manualMode = document.getElementById('manualInputMode');
+            const dropdownMode = document.getElementById('dropdownSelectMode');
+            
+            if (mode === 'manual') {
+                // 激活手动输入模式
+                manualBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                manualBtn.classList.add('bg-green-500', 'text-white');
+                dropdownBtn.classList.remove('bg-green-500', 'text-white');
+                dropdownBtn.classList.add('bg-gray-200', 'text-gray-700');
+                
+                manualMode.style.display = 'block';
+                dropdownMode.style.display = 'none';
+            } else {
+                // 激活下拉选择模式
+                dropdownBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                dropdownBtn.classList.add('bg-green-500', 'text-white');
+                manualBtn.classList.remove('bg-green-500', 'text-white');
+                manualBtn.classList.add('bg-gray-200', 'text-gray-700');
+                
+                manualMode.style.display = 'none';
+                dropdownMode.style.display = 'block';
+                
+                // 加载频道列表
+                loadFetchChannelList();
+            }
+        }
+        
+        // 加载频道列表
+        async function loadFetchChannelList() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/unique-channels', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    console.error('加载频道列表失败');
+                    return;
+                }
+                
+                const responseData = await response.json();
+                console.log('📦 loadFetchChannelList: 原始响应', responseData);
+                
+                // 提取数组
+                let channelData = Array.isArray(responseData) ? responseData : (responseData.channels || responseData.data || []);
+                
+                // 如果是对象数组，提取 channel_title
+                if (channelData.length > 0 && typeof channelData[0] === 'object' && channelData[0].channel_title) {
+                    channelData = channelData.map(ch => ch.channel_title);
+                }
+                
+                console.log('✅ loadFetchChannelList: 处理后的频道', channelData);
+                fetchChannelsData = channelData;
+                renderFetchChannelList(channelData);
+            } catch (error) {
+                console.error('加载频道列表失败:', error);
+            }
+        }
+        
+        // 渲染频道列表
+        function renderFetchChannelList(channels, searchTerm = '') {
+            const filteredChannels = searchTerm 
+                ? channels.filter(ch => ch.toLowerCase().includes(searchTerm.toLowerCase()))
+                : channels;
+            
+            const html = filteredChannels.map(channel => `
+                <li class="border-b border-gray-100 last:border-0">
+                    <label class="flex items-center px-4 py-2.5 hover:bg-green-50 cursor-pointer transition">
+                        <input type="checkbox" 
+                               value="${channel.replace(/"/g, '&quot;')}" 
+                               ${fetchSelectedChannels_list.includes(channel) ? 'checked' : ''}
+                               onchange="toggleFetchChannel('${channel.replace(/'/g, "\\'")}')"
+                               class="mr-3 h-4 w-4 text-green-600 rounded cursor-pointer">
+                        <span class="text-sm">${channel}</span>
+                    </label>
+                </li>
+            `).join('');
+            
+            document.getElementById('fetch-channel-list').innerHTML = html || 
+                '<li class="px-4 py-8 text-center text-gray-500">无匹配频道</li>';
+        }
+        
+        // 切换频道选择
+        function toggleFetchChannel(channel) {
+            const index = fetchSelectedChannels_list.indexOf(channel);
+            if (index > -1) {
+                fetchSelectedChannels_list.splice(index, 1);
+            } else {
+                fetchSelectedChannels_list.push(channel);
+            }
+            updateFetchChannelUI();
+        }
+        
+        // 更新UI
+        function updateFetchChannelUI() {
+            const count = fetchSelectedChannels_list.length;
+            const total = fetchChannelsData.length;
+            
+            document.getElementById('fetch-channel-selected-count').textContent = count;
+            
+            let text = '';
+            if (count === 0) {
+                text = `选择频道 (0)`;
+            } else {
+                text = `已选 ${count} 个频道`;
+            }
+            document.getElementById('fetch-channel-select-text').textContent = text;
+            
+            // 更新全选checkbox状态
+            const selectAllCheckbox = document.getElementById('fetch-channel-select-all');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = count === total && count > 0;
+            }
+            
+            // 重新渲染列表以更新checkbox状态
+            const searchInput = document.getElementById('fetch-channel-search');
+            const searchTerm = searchInput ? searchInput.value : '';
+            renderFetchChannelList(fetchChannelsData, searchTerm);
+        }
+        
+        // 切换下拉菜单
+        function toggleFetchChannelDropdown() {
+            const dropdown = document.getElementById('fetch-channel-dropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // 获取选中频道的数据
+        async function fetchSelectedChannels() {
+            if (fetchSelectedChannels_list.length === 0) {
+                alert('请至少选择一个频道！');
+                return;
+            }
+            
+            const confirmMsg = `确认获取以下 ${fetchSelectedChannels_list.length} 个频道的数据吗？\n\n${fetchSelectedChannels_list.join('\n')}\n\n将扣费 ¥5`;
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            // TODO: 调用批量获取API
+            console.log('🚀 开始获取频道:', fetchSelectedChannels_list);
+            alert(`功能开发中...\n将获取 ${fetchSelectedChannels_list.length} 个频道的数据`);
+        }
+        
+        // 初始化事件监听器
+        (function initFetchChannelEvents() {
+            // 搜索功能
+            const searchInput = document.getElementById('fetch-channel-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value;
+                    renderFetchChannelList(fetchChannelsData, searchTerm);
+                    
+                    const clearBtn = document.getElementById('clear-fetch-channel-search');
+                    if (clearBtn) {
+                        clearBtn.classList.toggle('hidden', !searchTerm);
+                    }
+                });
+            }
+            
+            // 清除搜索
+            const clearSearchBtn = document.getElementById('clear-fetch-channel-search');
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    if (searchInput) {
+                        searchInput.value = '';
+                        renderFetchChannelList(fetchChannelsData);
+                        this.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // 全选/取消全选
+            const selectAllCheckbox = document.getElementById('fetch-channel-select-all');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function(e) {
+                    if (e.target.checked) {
+                        fetchSelectedChannels_list = [...fetchChannelsData];
+                    } else {
+                        fetchSelectedChannels_list = [];
+                    }
+                    updateFetchChannelUI();
+                });
+            }
+            
+            // 清空选择
+            const clearSelectionBtn = document.getElementById('fetch-channel-clear-selection');
+            if (clearSelectionBtn) {
+                clearSelectionBtn.addEventListener('click', function() {
+                    fetchSelectedChannels_list = [];
+                    updateFetchChannelUI();
+                    
+                    const selectAllCheckbox = document.getElementById('fetch-channel-select-all');
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.checked = false;
+                    }
+                });
+            }
+            
+            // 点击外部关闭下拉菜单
+            document.addEventListener('click', function(e) {
+                const btn = document.getElementById('fetch-channel-select-btn');
+                const dropdown = document.getElementById('fetch-channel-dropdown');
+                if (btn && dropdown && 
+                    !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        })();
     </script>
 
 </body>

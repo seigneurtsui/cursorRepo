@@ -107,18 +107,33 @@ app.post('/api/search', authenticate, checkBalance(5), async (req, res) => {
         let allVideoSnippets = new Map();
 
         for (const playlist of playlists) {
-            const playlistItemsResponse = await youtube.playlistItems.list({
-                part: 'snippet,contentDetails',
-                playlistId: playlist.id.playlistId,
-                maxResults: 20,
-            });
-            playlistItemsResponse.data.items.forEach(item => {
-                const videoId = item.contentDetails.videoId;
-                if (videoId && !allVideoSnippets.has(videoId)) {
-                    allVideoSnippets.set(videoId, item.snippet);
-                    allVideoIds.add(videoId);
-                }
-            });
+            // 获取 playlistId：可能在 id.playlistId 或 id 本身
+            const playlistId = playlist.id?.playlistId || playlist.id;
+            
+            if (!playlistId) {
+                console.warn('⚠️  跳过无效的播放列表:', playlist);
+                continue;
+            }
+            
+            try {
+                const playlistItemsResponse = await youtube.playlistItems.list({
+                    part: 'snippet,contentDetails',
+                    playlistId: playlistId,
+                    maxResults: 20,
+                });
+                
+                playlistItemsResponse.data.items.forEach(item => {
+                    const videoId = item.contentDetails.videoId;
+                    if (videoId && !allVideoSnippets.has(videoId)) {
+                        allVideoSnippets.set(videoId, item.snippet);
+                        allVideoIds.add(videoId);
+                    }
+                });
+            } catch (playlistError) {
+                console.error(`❌ 获取播放列表 ${playlistId} 失败:`, playlistError.message);
+                // 继续处理其他播放列表
+                continue;
+            }
         }
 
         if (allVideoIds.size === 0) {

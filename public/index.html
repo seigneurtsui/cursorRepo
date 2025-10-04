@@ -1027,30 +1027,48 @@
 
         // ========== 数据获取函数 ==========
         async function fetchStats() {
+            console.log('📊 fetchStats() 开始执行');
             try {
                 const token = localStorage.getItem('token');
                 const res = await fetch('/api/stats', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
+                console.log('📥 fetchStats 响应状态:', res.status);
+                
                 if (res.status === 401) {
+                    console.warn('⚠️ fetchStats 未授权');
                     window.location.href = '/public/login.html';
                     return;
                 }
                 
                 if (!res.ok) {
-                    console.error('获取统计失败');
+                    console.error('❌ fetchStats 获取统计失败，状态:', res.status);
                     return;
                 }
                 
                 const data = await res.json();
-                document.getElementById('totalVideos').textContent = data.totalVideos.toLocaleString();
+                console.log('📦 fetchStats 收到数据:', data);
+                console.log('📊 totalVideos 值:', data.totalVideos);
+                
+                const totalVideosElement = document.getElementById('totalVideos');
+                console.log('🔍 totalVideos 元素:', totalVideosElement);
+                
+                if (totalVideosElement && data.totalVideos !== undefined) {
+                    totalVideosElement.textContent = data.totalVideos.toLocaleString();
+                    console.log('✅ totalVideos 已更新为:', data.totalVideos);
+                } else {
+                    console.warn('⚠️ 无法更新totalVideos，元素存在:', !!totalVideosElement, '数据存在:', data.totalVideos !== undefined);
+                }
                 
                 if (data.balance !== undefined) {
                     updateBalance(data.balance);
                 }
+                
+                console.log('✅ fetchStats() 执行完成');
             } catch (err) {
-                console.error('获取统计数据错误:', err);
+                console.error('❌ fetchStats 错误:', err);
+                console.error('错误堆栈:', err.stack);
             }
         }
 

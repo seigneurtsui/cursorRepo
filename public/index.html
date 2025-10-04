@@ -715,7 +715,7 @@
                         <div id="videoStats" class="flex items-center gap-4 text-sm">
                             <div class="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
                                 <span class="font-medium">总视频:</span>
-                                <span id="totalVideos" class="font-bold ml-1">--</span>
+                                <span id="totalVideosCount" class="font-bold ml-1">--</span>
                             </div>
                             <div class="px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200">
                                 <span class="font-medium">当前显示:</span>
@@ -1118,14 +1118,25 @@
                 console.log('📦 fetchStats 收到数据:', data);
                 console.log('📊 totalVideos 值:', data.totalVideos);
                 
+                // 更新两个位置的总视频数
                 const totalVideosElement = document.getElementById('totalVideos');
+                const totalVideosCountElement = document.getElementById('totalVideosCount');
                 console.log('🔍 totalVideos 元素:', totalVideosElement);
+                console.log('🔍 totalVideosCount 元素:', totalVideosCountElement);
                 
-                if (totalVideosElement && data.totalVideos !== undefined) {
-                    totalVideosElement.textContent = data.totalVideos.toLocaleString();
-                    console.log('✅ totalVideos 已更新为:', data.totalVideos);
+                if (data.totalVideos !== undefined) {
+                    // 更新顶部统计卡片
+                    if (totalVideosElement) {
+                        totalVideosElement.textContent = data.totalVideos.toLocaleString();
+                        console.log('✅ totalVideos (顶部) 已更新为:', data.totalVideos);
+                    }
+                    // 更新视频列表标题旁的徽章
+                    if (totalVideosCountElement) {
+                        totalVideosCountElement.textContent = data.totalVideos.toLocaleString();
+                        console.log('✅ totalVideosCount (列表) 已更新为:', data.totalVideos);
+                    }
                 } else {
-                    console.warn('⚠️ 无法更新totalVideos，元素存在:', !!totalVideosElement, '数据存在:', data.totalVideos !== undefined);
+                    console.warn('⚠️ 无法更新totalVideos，数据不存在');
                 }
                 
                 if (data.balance !== undefined) {

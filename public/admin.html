@@ -30,7 +30,7 @@
       <div>
         <button class="btn btn-secondary" onclick="showChangePasswordModal()">🔑 修改密码</button>
         <button class="btn btn-success" onclick="showCreateUserModal()">➕ 创建新账户</button>
-        <button class="btn btn-secondary" onclick="window.location.href='/'">返回主页</button>
+        <button class="btn btn-secondary" onclick="goToMainPage()">返回主页</button>
         <button class="btn btn-secondary" onclick="logout()">退出登录</button>
       </div>
     </div>
@@ -731,6 +731,17 @@
         console.error('创建用户错误:', error);
         alert('❌ 创建用户失败');
       }
+    }
+
+    function goToMainPage() {
+      // 清除任何缓存状态
+      sessionStorage.clear();
+      // 跳转到主页并强制刷新
+      window.location.href = '/';
+      // 立即触发刷新，确保页面重新加载
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 100);
     }
 
     function logout() {

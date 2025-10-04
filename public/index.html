@@ -552,6 +552,61 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- 管理员的会员筛选（多选，带搜索）-->
+                        <div id="adminMemberFilter" class="relative" style="display: none;">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                👤 会员筛选 (管理员)
+                            </label>
+                            <button id="admin-member-filter-btn" 
+                                    class="w-full px-4 py-2 bg-white border-2 border-purple-400 rounded-md text-left flex items-center justify-between hover:border-purple-500 transition">
+                                <span id="admin-member-filter-text" class="truncate text-sm">
+                                    所有会员 (0)
+                                </span>
+                                <svg class="h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            
+                            <!-- 下拉菜单 -->
+                            <div id="admin-member-dropdown" class="absolute z-10 w-full mt-1 bg-white border-2 border-purple-400 rounded-md shadow-xl hidden" style="max-height: 400px;">
+                                <!-- 搜索框 -->
+                                <div class="p-3 border-b border-gray-200 bg-purple-50">
+                                    <div class="relative">
+                                        <input type="text" id="admin-member-search" 
+                                               placeholder="搜索会员邮箱或用户名..." 
+                                               class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                        <button id="clear-admin-member-search" class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 hidden">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 全选/取消全选 -->
+                                <div class="p-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" id="admin-member-select-all" class="mr-2 h-4 w-4 text-purple-600 rounded cursor-pointer">
+                                        <span class="text-sm font-medium text-gray-700">全选 / 取消全选</span>
+                                    </label>
+                                    <button id="admin-member-clear-selection" class="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                                        清空选择
+                                    </button>
+                                </div>
+                                
+                                <!-- 会员列表 -->
+                                <ul id="admin-member-list" class="overflow-y-auto" style="max-height: 250px;">
+                                    <li class="px-4 py-8 text-center text-gray-500">加载中...</li>
+                                </ul>
+                                
+                                <!-- 底部统计 -->
+                                <div class="p-3 border-t border-gray-200 bg-purple-50 text-sm text-gray-600">
+                                    已选择 <span id="admin-member-selected-count" class="font-bold text-purple-600">0</span> 个会员
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">快捷时间</label>
                             <select 
@@ -705,6 +760,11 @@
         let allChannelsData = [];
         let currentChannelFilter = '';
         
+        // 管理员会员筛选
+        let adminSelectedMembers = [];
+        let allMembersData = [];
+        let currentMemberFilter = '';
+        
         // 普通用户频道筛选
         let selectedChannels = [];
         let channelsData = [];
@@ -760,15 +820,22 @@
                     console.log('📋 加载用户列表...');
                     await loadUserList();
                     
-                    // 显示管理员频道筛选，隐藏普通频道筛选
+                    // 显示管理员频道筛选和会员筛选，隐藏普通频道筛选
                     document.getElementById('normalChannelFilter').style.display = 'none';
                     document.getElementById('adminChannelFilter').style.display = 'block';
+                    document.getElementById('adminMemberFilter').style.display = 'block';
                     
                     console.log('📺 加载管理员频道筛选...');
                     await loadAdminChannelFilter();
+                    console.log('👥 加载管理员会员筛选...');
+                    await loadAdminMemberFilter();
                 } else {
                     console.log('👤 普通用户模式');
-                    // 普通用户：加载普通频道筛选
+                    // 普通用户：加载普通频道筛选，隐藏管理员筛选
+                    document.getElementById('normalChannelFilter').style.display = 'block';
+                    document.getElementById('adminChannelFilter').style.display = 'none';
+                    document.getElementById('adminMemberFilter').style.display = 'none';
+                    
                     console.log('📺 加载普通频道筛选...');
                     await loadChannelFilter();
                 }
@@ -1239,11 +1306,22 @@
                     channelFilter = selectedChannels.join(',');
                 }
                 
+                // 管理员：处理会员筛选（支持多选）
+                let memberFilter = '';
+                if (currentUser && currentUser.isAdmin && adminSelectedMembers.length > 0) {
+                    memberFilter = adminSelectedMembers.map(m => m.id).join(',');
+                }
+                
                 if (searchTerm) params.append('search', searchTerm);
                 if (channelFilter) params.append('channel', channelFilter);
                 if (startDate) params.append('startDate', startDate);
                 if (endDate) params.append('endDate', endDate);
-                if (currentFilterUserId) params.append('filterUserId', currentFilterUserId);
+                // 会员筛选优先，如果有会员筛选就使用会员筛选，否则使用旧的单选下拉
+                if (memberFilter) {
+                    params.append('filterUserId', memberFilter);
+                } else if (currentFilterUserId) {
+                    params.append('filterUserId', currentFilterUserId);
+                }
                 
                 const url = `/api/videos-paginated?${params}`;
                 console.log('📡 发送请求到:', url);
@@ -1432,16 +1510,34 @@
             selectedChannels = [];
             adminSelectedChannels = [];
             
-            // 管理员：重置管理员频道筛选
+            // 重置会员筛选
+            adminSelectedMembers = [];
+            
+            // 管理员：重置管理员频道筛选和会员筛选
             if (currentUser && currentUser.isAdmin) {
-                const adminSelectAll = document.getElementById('admin-channel-select-all');
-                if (adminSelectAll) {
-                    adminSelectAll.checked = false;
+                // 重置频道筛选
+                const adminChannelSelectAll = document.getElementById('admin-channel-select-all');
+                if (adminChannelSelectAll) {
+                    adminChannelSelectAll.checked = false;
                 }
                 if (typeof renderAdminChannelList === 'function') {
                     renderAdminChannelList(allChannelsData);
                 }
-                updateAdminChannelUI();
+                if (typeof updateAdminChannelUI === 'function') {
+                    updateAdminChannelUI();
+                }
+                
+                // 重置会员筛选
+                const adminMemberSelectAll = document.getElementById('admin-member-select-all');
+                if (adminMemberSelectAll) {
+                    adminMemberSelectAll.checked = false;
+                }
+                if (typeof renderAdminMemberList === 'function') {
+                    renderAdminMemberList(allMembersData);
+                }
+                if (typeof updateAdminMemberUI === 'function') {
+                    updateAdminMemberUI();
+                }
             } else {
                 // 普通用户：重置普通频道筛选
                 const normalSelectAll = document.getElementById('channel-select-all');
@@ -1945,7 +2041,177 @@
                     dropdown.classList.add('hidden');
                 }
             });
+            
+            // ===== 管理员会员筛选 =====
+            
+            // 切换下拉菜单
+            const adminMemberBtn = document.getElementById('admin-member-filter-btn');
+            if (adminMemberBtn) {
+                adminMemberBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const dropdown = document.getElementById('admin-member-dropdown');
+                    dropdown.classList.toggle('hidden');
+                });
+            }
+            
+            // 全选/取消全选
+            const adminMemberSelectAllCheckbox = document.getElementById('admin-member-select-all');
+            if (adminMemberSelectAllCheckbox) {
+                adminMemberSelectAllCheckbox.addEventListener('change', function(e) {
+                    if (e.target.checked) {
+                        adminSelectedMembers = [...allMembersData];
+                    } else {
+                        adminSelectedMembers = [];
+                    }
+                    renderAdminMemberList(allMembersData);
+                    updateAdminMemberUI();
+                });
+            }
+            
+            // 清空选择
+            const adminMemberClearBtn = document.getElementById('admin-member-clear-selection');
+            if (adminMemberClearBtn) {
+                adminMemberClearBtn.addEventListener('click', function() {
+                    adminSelectedMembers = [];
+                    const checkbox = document.getElementById('admin-member-select-all');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                    }
+                    renderAdminMemberList(allMembersData);
+                    updateAdminMemberUI();
+                });
+            }
+            
+            // 搜索功能
+            const adminMemberSearchInput = document.getElementById('admin-member-search');
+            if (adminMemberSearchInput) {
+                adminMemberSearchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.trim();
+                    renderAdminMemberList(allMembersData, searchTerm);
+                    
+                    const clearBtn = document.getElementById('clear-admin-member-search');
+                    if (clearBtn) {
+                        clearBtn.classList.toggle('hidden', !searchTerm);
+                    }
+                });
+            }
+            
+            // 清除搜索
+            const adminMemberClearSearchBtn = document.getElementById('clear-admin-member-search');
+            if (adminMemberClearSearchBtn) {
+                adminMemberClearSearchBtn.addEventListener('click', function() {
+                    const input = document.getElementById('admin-member-search');
+                    if (input) {
+                        input.value = '';
+                        input.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+            
+            // 点击外部关闭下拉菜单
+            document.addEventListener('click', function(e) {
+                const adminMemberBtn = document.getElementById('admin-member-filter-btn');
+                const adminMemberDropdown = document.getElementById('admin-member-dropdown');
+                if (adminMemberBtn && adminMemberDropdown && 
+                    !adminMemberBtn.contains(e.target) && !adminMemberDropdown.contains(e.target)) {
+                    adminMemberDropdown.classList.add('hidden');
+                }
+            });
         });
+        
+        // ==================== 管理员会员筛选功能 ====================
+        
+        async function loadAdminMemberFilter() {
+            if (!currentUser || !currentUser.isAdmin) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/auth/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    console.error('加载会员列表失败');
+                    return;
+                }
+                
+                const users = await response.json();
+                // 转换为会员对象数组，包含 id, email, username
+                allMembersData = users.map(u => ({
+                    id: u.id,
+                    email: u.email,
+                    username: u.username || u.email
+                }));
+                renderAdminMemberList(allMembersData);
+            } catch (error) {
+                console.error('加载会员列表失败:', error);
+            }
+        }
+
+        function renderAdminMemberList(members, searchTerm = '') {
+            const filteredMembers = searchTerm 
+                ? members.filter(m => 
+                    m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    m.username.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                : members;
+            
+            const html = filteredMembers.map(member => `
+                <li class="border-b border-gray-100 last:border-0">
+                    <label class="flex items-center px-4 py-2.5 hover:bg-purple-50 cursor-pointer transition">
+                        <input type="checkbox" 
+                               value="${member.id}" 
+                               ${adminSelectedMembers.some(m => m.id === member.id) ? 'checked' : ''}
+                               onchange="toggleAdminMember(${member.id}, '${member.email.replace(/'/g, "\\'")}', '${member.username.replace(/'/g, "\\'")}')"
+                               class="mr-3 h-4 w-4 text-purple-600 rounded cursor-pointer">
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-gray-900">${member.username}</div>
+                            <div class="text-xs text-gray-500">${member.email}</div>
+                        </div>
+                    </label>
+                </li>
+            `).join('');
+            
+            document.getElementById('admin-member-list').innerHTML = html || 
+                '<li class="px-4 py-8 text-center text-gray-500">无匹配会员</li>';
+        }
+
+        function toggleAdminMember(id, email, username) {
+            const index = adminSelectedMembers.findIndex(m => m.id === id);
+            if (index > -1) {
+                adminSelectedMembers.splice(index, 1);
+            } else {
+                adminSelectedMembers.push({ id, email, username });
+            }
+            updateAdminMemberUI();
+        }
+
+        function updateAdminMemberUI() {
+            const count = adminSelectedMembers.length;
+            const total = allMembersData.length;
+            
+            document.getElementById('admin-member-selected-count').textContent = count;
+            
+            let text = '';
+            if (count === 0) {
+                text = `所有会员 (${total})`;
+            } else if (count === total) {
+                text = `全部会员 (${count})`;
+            } else {
+                text = `已选 ${count} 个会员`;
+            }
+            document.getElementById('admin-member-filter-text').textContent = text;
+            
+            // 更新全选checkbox状态
+            const selectAllCheckbox = document.getElementById('admin-member-select-all');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = count === total && count > 0;
+            }
+            
+            // 应用筛选到视频列表
+            currentMemberFilter = adminSelectedMembers.map(m => m.id).join(',');
+            applyFilters();
+        }
     </script>
 
 </body>

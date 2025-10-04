@@ -655,7 +655,19 @@
             <!-- 视频列表 -->
             <section>
                 <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-bold mb-4 text-gray-800">📹 视频列表</h2>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">📹 视频列表</h2>
+                        <div id="videoStats" class="flex items-center gap-4 text-sm">
+                            <div class="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+                                <span class="font-medium">总视频:</span>
+                                <span id="totalVideos" class="font-bold ml-1">--</span>
+                            </div>
+                            <div class="px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200">
+                                <span class="font-medium">当前显示:</span>
+                                <span id="filteredVideos" class="font-bold ml-1">--</span>
+                            </div>
+                        </div>
+                    </div>
                     <div id="videoList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]">
                         <div class="col-span-full text-center py-12 text-gray-500">
                             加载中...
@@ -1240,6 +1252,13 @@
                 
                 const { data, pagination } = responseData;
                 console.log('📊 视频数量:', data?.length || 0);
+                
+                // 更新过滤后的视频数统计
+                const filteredCount = pagination.totalItems || 0;
+                const filteredElement = document.getElementById('filteredVideos');
+                if (filteredElement) {
+                    filteredElement.textContent = filteredCount.toLocaleString();
+                }
                 
                 displayVideos(data);
                 displayPagination(pagination);

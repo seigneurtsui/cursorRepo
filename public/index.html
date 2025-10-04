@@ -688,24 +688,31 @@
 
         // ========== 认证相关函数 ==========
         async function checkAuthAndLoadUser() {
+            console.log('🔍 开始验证登录状态...');
             const token = localStorage.getItem('token');
             if (!token) {
+                console.log('❌ 未找到token，跳转到登录页');
                 window.location.href = '/public/login.html';
                 return;
             }
             
             try {
+                console.log('📡 发送请求到 /api/auth/me');
                 const response = await fetch('/api/auth/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                
+                console.log('📥 收到响应:', response.status);
                 
                 if (!response.ok) {
                     throw new Error('登录已过期');
                 }
                 
                 currentUser = await response.json();
+                console.log('✅ 用户信息:', currentUser);
                 
                 // 隐藏加载遮罩，显示主内容
+                console.log('🎨 显示主内容...');
                 document.getElementById('loading-overlay').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
                 
@@ -716,27 +723,40 @@
                 
                 // 如果是管理员
                 if (currentUser.isAdmin) {
+                    console.log('👑 管理员模式');
                     document.getElementById('adminBadge').style.display = 'inline-block';
                     document.getElementById('adminBtn').style.display = 'inline-block';
                     document.getElementById('adminControls').style.display = 'block';
+                    
+                    console.log('📋 加载用户列表...');
                     await loadUserList();
                     
                     // 显示管理员频道筛选，隐藏普通频道筛选
                     document.getElementById('normalChannelFilter').style.display = 'none';
                     document.getElementById('adminChannelFilter').style.display = 'block';
+                    
+                    console.log('📺 加载管理员频道筛选...');
                     await loadAdminChannelFilter();
                 } else {
+                    console.log('👤 普通用户模式');
                     // 普通用户：加载普通频道筛选
+                    console.log('📺 加载普通频道筛选...');
                     await loadChannelFilter();
                 }
                 
                 // 加载数据
+                console.log('📊 加载统计数据...');
                 await fetchStats();
+                
+                console.log('🎬 加载视频列表...');
                 await fetchVideos();
                 
+                console.log('✅ 页面加载完成！');
+                
             } catch (error) {
-                console.error('认证失败:', error);
-                alert('登录已过期，请重新登录');
+                console.error('❌ 认证失败:', error);
+                console.error('错误堆栈:', error.stack);
+                alert('登录已过期，请重新登录\n\n错误信息: ' + error.message);
                 localStorage.removeItem('token');
                 window.location.href = '/public/login.html';
             }
@@ -752,24 +772,38 @@
         // 加载用户列表（管理员）
         async function loadUserList() {
             try {
+                console.log('🔄 loadUserList: 开始加载用户列表');
                 const token = localStorage.getItem('token');
-                const response = await fetch('/api/admin/users', {
+                const response = await fetch('/api/auth/admin/users', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
+                console.log('📥 loadUserList: 响应状态', response.status);
+                
                 if (response.ok) {
                     const users = await response.json();
+                    console.log('✅ loadUserList: 获取到', users.length, '个用户');
                     const select = document.getElementById('userFilter');
+                    
+                    if (!select) {
+                        console.warn('⚠️ loadUserList: userFilter 元素不存在');
+                        return;
+                    }
                     
                     users.forEach(user => {
                         const option = document.createElement('option');
                         option.value = user.id;
-                        option.textContent = `${user.email} (${user.video_count} 个视频, 余额¥${parseFloat(user.balance).toFixed(2)})`;
+                        option.textContent = `${user.email} (${user.video_count || 0} 个视频, 余额¥${parseFloat(user.balance || 0).toFixed(2)})`;
                         select.appendChild(option);
                     });
+                    console.log('✅ loadUserList: 用户列表加载完成');
+                } else {
+                    console.error('❌ loadUserList: 请求失败', response.status);
                 }
             } catch (error) {
-                console.error('加载用户列表失败:', error);
+                console.error('❌ loadUserList: 加载用户列表失败:', error);
+                console.error('错误堆栈:', error.stack);
+                throw error; // 重新抛出错误，让上层捕获
             }
         }
 

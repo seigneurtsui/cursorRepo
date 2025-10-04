@@ -1,8 +1,60 @@
 // payment-ijpay.js - IJPay payment handling functions
 
-// Global variables for payment
-let currentOrderId = null;
-let paymentStatusCheckInterval = null;
+// Global variables for payment (use window to avoid conflicts)
+window.currentOrderId = null;
+window.paymentStatusCheckInterval = null;
+
+// Create payment order
+async function createPaymentOrder() {
+  if (!window.selectedPlanId) {
+    alert('❌ 请选择充值套餐');
+    return;
+  }
+  if (!window.selectedPaymentMethod) {
+    alert('❌ 请选择支付方式');
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+  const API_BASE = window.location.origin;
+  const rechargeBtn = event.target;
+  rechargeBtn.disabled = true;
+  rechargeBtn.innerHTML = '<span class="loading-spinner"></span>创建订单中...';
+  
+  try {
+    const response = await fetch(`${API_BASE}/api/payment/create-order`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        planId: window.selectedPlanId,
+        paymentMethod: window.selectedPaymentMethod
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Show payment modal with QR code
+      showPaymentModal(result);
+      
+      // Reset button
+      rechargeBtn.disabled = false;
+      rechargeBtn.innerHTML = '💰 立即充值';
+    } else {
+      alert('❌ 创建订单失败: ' + (result.error || '未知错误'));
+      rechargeBtn.disabled = false;
+      rechargeBtn.innerHTML = '💰 立即充值';
+    }
+  } catch (error) {
+    console.error('创建订单错误:', error);
+    alert('❌ 创建订单失败: ' + error.message);
+    rechargeBtn.disabled = false;
+    rechargeBtn.innerHTML = '💰 立即充值';
+  }
+}
 
 // Show payment modal with QR code
 function showPaymentModal(paymentData) {
@@ -87,12 +139,12 @@ function showPaymentModal(paymentData) {
 
 function closePaymentModal() {
   document.getElementById('paymentModal').style.display = 'none';
-  currentOrderId = null;
+  window.currentOrderId = null;
   
   // Stop status checking
-  if (paymentStatusCheckInterval) {
-    clearInterval(paymentStatusCheckInterval);
-    paymentStatusCheckInterval = null;
+  if (window.paymentStatusCheckInterval) {
+    clearInterval(window.paymentStatusCheckInterval);
+    window.paymentStatusCheckInterval = null;
   }
   
   // Reload profile to refresh balance
@@ -103,19 +155,19 @@ function closePaymentModal() {
 
 function startPaymentStatusCheck() {
   // Check payment status every 3 seconds
-  paymentStatusCheckInterval = setInterval(async () => {
+  window.paymentStatusCheckInterval = setInterval(async () => {
     await checkPaymentStatus(true);
   }, 3000);
 }
 
 async function checkPaymentStatus(autoCheck = false) {
-  if (!currentOrderId) return;
+  if (!window.currentOrderId) return;
   
   const token = localStorage.getItem('token');
   const API_BASE = window.location.origin;
   
   try {
-    const response = await fetch(`${API_BASE}/api/payment/query-order/${currentOrderId}`, {
+    const response = await fetch(`${API_BASE}/api/payment/query-order/${window.currentOrderId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -123,9 +175,9 @@ async function checkPaymentStatus(autoCheck = false) {
     
     if (result.success && result.paid) {
       // Payment successful
-      if (paymentStatusCheckInterval) {
-        clearInterval(paymentStatusCheckInterval);
-        paymentStatusCheckInterval = null;
+      if (window.paymentStatusCheckInterval) {
+        clearInterval(window.paymentStatusCheckInterval);
+        window.paymentStatusCheckInterval = null;
       }
       
       // Show success
@@ -155,13 +207,13 @@ async function checkPaymentStatus(autoCheck = false) {
 
 // Mock payment confirm (for testing mode only)
 async function mockConfirmPayment() {
-  if (!currentOrderId) return;
+  if (!window.currentOrderId) return;
   
   const token = localStorage.getItem('token');
   const API_BASE = window.location.origin;
   
   try {
-    const response = await fetch(`${API_BASE}/api/payment/mock-confirm/${currentOrderId}`, {
+    const response = await fetch(`${API_BASE}/api/payment/mock-confirm/${window.currentOrderId}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });

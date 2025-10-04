@@ -389,14 +389,14 @@
     }
 
     function selectPlan(planId) {
-      selectedPlanId = planId;
+      window.selectedPlanId = planId;
       document.querySelectorAll('.plan-card').forEach((card, index) => {
         card.classList.toggle('selected', index + 1 === planId);
       });
     }
 
     function selectPayment(method) {
-      selectedPaymentMethod = method;
+      window.selectedPaymentMethod = method;
       document.querySelectorAll('.payment-btn').forEach(btn => {
         btn.classList.remove('selected');
       });
@@ -435,8 +435,8 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            planId: selectedPlanId,
-            paymentMethod: selectedPaymentMethod
+            planId: window.selectedPlanId,
+            paymentMethod: window.selectedPaymentMethod
           })
         });
         
@@ -444,10 +444,12 @@
         
         if (result.success) {
           // Store order ID
-          currentOrderId = result.orderId;
+          window.currentOrderId = result.orderId;
           
-          // Show payment modal with QR code
-          showPaymentModal(result, amount);
+          // Show payment modal with QR code (function from payment-ijpay.js)
+          if (typeof showPaymentModal === 'function') {
+            showPaymentModal(result);
+          }
           
           // Reset button
           rechargeBtn.disabled = false;

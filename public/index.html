@@ -419,14 +419,100 @@
                         <h3 class="font-semibold mb-3 flex items-center">
                             <span class="mr-2">📺</span> 方式2: 按指定频道获取
                         </h3>
-                        <button 
-                            onclick="openChannelModal()" 
-                            class="bg-green-400 hover:bg-green-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center"
-                        >
-                            <span class="mr-2">➕</span> 选择频道并获取 (¥5)
-                        </button>
+                        
+                        <!-- 频道选择方式切换 -->
+                        <div class="mb-4">
+                            <div class="flex gap-2 mb-3">
+                                <button 
+                                    id="manualInputBtn"
+                                    onclick="switchChannelInputMode('manual')"
+                                    class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 bg-green-500 text-white"
+                                >
+                                    ✏️ 手动输入
+                                </button>
+                                <button 
+                                    id="dropdownSelectBtn"
+                                    onclick="switchChannelInputMode('dropdown')"
+                                    class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                >
+                                    📋 从列表选择
+                                </button>
+                            </div>
+                            
+                            <!-- 手动输入模式 -->
+                            <div id="manualInputMode">
+                                <button 
+                                    onclick="openChannelModal()" 
+                                    class="w-full bg-green-400 hover:bg-green-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center justify-center"
+                                >
+                                    <span class="mr-2">➕</span> 手动输入频道ID (¥5)
+                                </button>
+                            </div>
+                            
+                            <!-- 下拉选择模式 -->
+                            <div id="dropdownSelectMode" style="display: none;">
+                                <div class="relative mb-3">
+                                    <button id="fetch-channel-select-btn" 
+                                            onclick="toggleFetchChannelDropdown()"
+                                            class="w-full px-4 py-2 bg-white border-2 border-green-400 rounded-md text-left flex items-center justify-between hover:border-green-500 transition">
+                                        <span id="fetch-channel-select-text" class="truncate text-sm text-gray-700">
+                                            选择频道 (0)
+                                        </span>
+                                        <svg class="h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- 下拉菜单 -->
+                                    <div id="fetch-channel-dropdown" class="absolute z-10 w-full mt-1 bg-white border-2 border-green-400 rounded-md shadow-xl hidden" style="max-height: 400px;">
+                                        <!-- 搜索框 -->
+                                        <div class="p-3 border-b border-gray-200 bg-green-50">
+                                            <div class="relative">
+                                                <input type="text" id="fetch-channel-search" 
+                                                       placeholder="搜索频道名称..." 
+                                                       class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                                                <button id="clear-fetch-channel-search" class="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 hidden">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 全选/取消全选 -->
+                                        <div class="p-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="checkbox" id="fetch-channel-select-all" class="mr-2 h-4 w-4 text-green-600 rounded cursor-pointer">
+                                                <span class="text-sm font-medium text-gray-700">全选 / 取消全选</span>
+                                            </label>
+                                            <button id="fetch-channel-clear-selection" class="text-xs text-green-600 hover:text-green-700 font-medium">
+                                                清空选择
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- 频道列表 -->
+                                        <ul id="fetch-channel-list" class="overflow-y-auto" style="max-height: 250px;">
+                                            <li class="px-4 py-8 text-center text-gray-500">加载中...</li>
+                                        </ul>
+                                        
+                                        <!-- 底部统计 -->
+                                        <div class="p-3 border-t border-gray-200 bg-green-50 text-sm text-gray-600">
+                                            已选择 <span id="fetch-channel-selected-count" class="font-bold text-green-600">0</span> 个频道
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    onclick="fetchSelectedChannels()" 
+                                    class="w-full bg-green-400 hover:bg-green-500 text-gray-900 font-bold py-2 px-6 rounded-md transition-all duration-300 flex items-center justify-center"
+                                >
+                                    <span class="mr-2">🚀</span> 获取选中频道 (¥5)
+                                </button>
+                            </div>
+                        </div>
+                        
                         <div class="cost-warning mt-3">
-                            💡 提示：每次按频道获取将扣费 5元，会获取该频道的所有视频
+                            💡 提示：每次按频道获取将扣费 5元，会获取选中频道的所有视频
                         </div>
                     </div>
                 </div>
@@ -773,6 +859,10 @@
         let selectedChannels = [];
         let channelsData = [];
         let channelRemarks = {};
+        
+        // 方式2获取频道筛选
+        let fetchSelectedChannels_list = [];
+        let fetchChannelsData = [];
 
         // ========== 页面加载初始化 ==========
         document.addEventListener('DOMContentLoaded', async function() {

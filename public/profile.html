@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>会员中心 - 视频章节生成器</title>
   <link rel="stylesheet" href="/public/styles.css">
+  <script src="/public/payment-ijpay.js"></script>
   <style>
     .profile-container { max-width: 900px; margin: 20px auto; padding: 20px; }
     .profile-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 20px; }
@@ -78,39 +79,55 @@
         加载中...
       </div>
 
-      <h4 style="margin-top: 25px; margin-bottom: 10px;">选择支付方式</h4>
-      <div class="payment-methods">
-        <div class="payment-btn" onclick="selectPayment('alipay')">
-          <div style="font-size: 24px;">💳</div>
-          <div style="font-size: 14px;">支付宝</div>
-        </div>
+      <h4 style="margin-top: 25px; margin-bottom: 10px;">选择支付方式 (IJPay)</h4>
+      <div class="payment-methods" style="grid-template-columns: repeat(2, 1fr);">
         <div class="payment-btn" onclick="selectPayment('wechat')">
-          <div style="font-size: 24px;">💚</div>
-          <div style="font-size: 14px;">微信支付</div>
+          <div style="font-size: 32px;">💚</div>
+          <div style="font-size: 16px; font-weight: 600;">微信支付</div>
+          <div style="font-size: 11px; color: #999;">扫码支付</div>
         </div>
-        <div class="payment-btn" onclick="selectPayment('stripe')">
-          <div style="font-size: 24px;">💳</div>
-          <div style="font-size: 14px;">Stripe</div>
-        </div>
-        <div class="payment-btn" onclick="selectPayment('paypal')">
-          <div style="font-size: 24px;">💙</div>
-          <div style="font-size: 14px;">PayPal</div>
-        </div>
-        <div class="payment-btn" onclick="selectPayment('visa')">
-          <div style="font-size: 24px;">💳</div>
-          <div style="font-size: 14px;">Visa</div>
-        </div>
-        <div class="payment-btn" onclick="selectPayment('mastercard')">
-          <div style="font-size: 24px;">💳</div>
-          <div style="font-size: 14px;">MasterCard</div>
+        <div class="payment-btn" onclick="selectPayment('alipay')">
+          <div style="font-size: 32px;">💙</div>
+          <div style="font-size: 16px; font-weight: 600;">支付宝</div>
+          <div style="font-size: 11px; color: #999;">扫码支付</div>
         </div>
       </div>
 
-      <button class="btn-primary" onclick="recharge()" style="width: 100%; margin-top: 20px; font-size: 18px;">
-        💰 立即充值（演示版-自动到账）
+      <button class="btn-primary" onclick="createPaymentOrder()" style="width: 100%; margin-top: 20px; font-size: 18px;">
+        💰 立即充值
       </button>
-      <div style="margin-top: 10px; color: #999; font-size: 12px; text-align: center;">
-        ⚠️ 当前为演示版本，点击充值将模拟支付并立即到账
+      <div id="paymentModeIndicator" style="margin-top: 10px; color: #666; font-size: 12px; text-align: center;">
+        <!-- Payment mode indicator will be shown here -->
+      </div>
+    </div>
+
+    <!-- Payment QR Code Modal -->
+    <div id="paymentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 10px 50px rgba(0,0,0,0.5); text-align: center;">
+        <h2 style="margin-top: 0; color: #333;" id="paymentTitle">扫码支付</h2>
+        
+        <div id="qrCodeContainer" style="margin: 30px 0; display: flex; justify-content: center; align-items: center; min-height: 280px;">
+          <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+        </div>
+        
+        <div id="paymentInfo" style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+          <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="paymentAmount">¥0.00</div>
+          <div style="font-size: 14px; color: #666; margin-top: 5px;" id="paymentDesc">充值套餐</div>
+        </div>
+        
+        <div style="font-size: 13px; color: #999; margin-bottom: 20px;">
+          <div>订单号：<span id="orderIdDisplay">-</span></div>
+          <div style="margin-top: 5px;">请使用 <span id="paymentMethodDisplay" style="font-weight: 600;">微信</span> 扫描二维码完成支付</div>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+          <button onclick="closePaymentModal()" class="btn-secondary" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
+            ❌ 取消支付
+          </button>
+          <button onclick="checkPaymentStatus()" class="btn-primary" style="flex: 1; padding: 12px; font-size: 16px;">
+            🔄 刷新状态
+          </button>
+        </div>
       </div>
     </div>
 
@@ -177,6 +194,49 @@
     <div class="card">
       <h3>📊 最近交易记录</h3>
       <div id="transactionsContainer">加载中...</div>
+    </div>
+  </div>
+
+  <!-- Payment QR Code Modal -->
+  <div id="paymentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 40px; border-radius: 20px; max-width: 500px; text-align: center; box-shadow: 0 10px 50px rgba(0,0,0,0.5);">
+      <h2 id="paymentTitle" style="margin: 0 0 20px 0; color: #333;">扫码支付</h2>
+      
+      <div id="qrCodeContainer" style="margin: 20px 0; padding: 20px; background: #f5f5f5; border-radius: 12px; display: inline-block;">
+        <img id="qrCodeImage" src="" alt="QR Code" style="width: 250px; height: 250px; display: block;">
+      </div>
+      
+      <div style="margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #667eea15, #764ba215); border-radius: 10px; border-left: 4px solid #667eea;">
+        <div style="font-size: 14px; color: #666; margin-bottom: 5px;">订单金额</div>
+        <div id="paymentAmount" style="font-size: 32px; font-weight: bold; color: #667eea;">¥0.00</div>
+      </div>
+      
+      <div style="font-size: 14px; color: #999; margin-bottom: 20px;">
+        <div id="paymentInstructions">请使用手机扫描二维码完成支付</div>
+        <div id="paymentOrderId" style="margin-top: 10px; font-size: 12px;">订单号: -</div>
+      </div>
+      
+      <div id="paymentStatus" style="margin: 15px 0; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 14px; color: #856404;">
+        ⏳ 等待支付中...
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button onclick="checkPaymentStatus()" class="btn-primary" style="flex: 1;">
+          🔄 检查支付状态
+        </button>
+        <button onclick="closePaymentModal()" class="btn-primary" style="flex: 1; background: #6c757d;">
+          ❌ 取消支付
+        </button>
+      </div>
+      
+      <div id="mockPaymentSection" style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 2px dashed #ffc107; display: none;">
+        <div style="font-size: 13px; color: #856404; margin-bottom: 10px;">
+          ⚠️ 演示模式：未配置真实支付渠道
+        </div>
+        <button onclick="mockConfirmPayment()" class="btn-primary" style="background: #ffc107; color: #333; width: 100%;">
+          ✅ 模拟支付成功（测试用）
+        </button>
+      </div>
     </div>
   </div>
 
@@ -257,6 +317,8 @@
         const result = await response.json();
         
         if (result.success && result.plans) {
+          // Save plans to localStorage for later use
+          localStorage.setItem('paymentPlans', JSON.stringify(result.plans));
           renderPaymentPlans(result.plans);
         }
       } catch (error) {
@@ -341,6 +403,10 @@
       event.target.closest('.payment-btn').classList.add('selected');
     }
 
+    // Global variables for payment
+    let currentOrderId = null;
+    let paymentStatusCheckInterval = null;
+    
     async function recharge() {
       if (!selectedPlanId) {
         alert('❌ 请选择充值套餐');
@@ -354,10 +420,15 @@
       const token = localStorage.getItem('token');
       const rechargeBtn = event.target;
       rechargeBtn.disabled = true;
-      rechargeBtn.innerHTML = '<span class="loading-spinner"></span>充值中...';
+      rechargeBtn.innerHTML = '<span class="loading-spinner"></span>创建订单中...';
       
       try {
-        const response = await fetch(`${API_BASE}/api/auth/recharge`, {
+        // Get plan info
+        const plans = JSON.parse(localStorage.getItem('paymentPlans') || '[]');
+        const selectedPlan = plans.find(p => p.id === selectedPlanId);
+        const amount = selectedPlan ? parseFloat(selectedPlan.price) : 0;
+        
+        const response = await fetch(`${API_BASE}/api/payment/create-order`, {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -372,31 +443,166 @@
         const result = await response.json();
         
         if (result.success) {
-          // Success animation
-          rechargeBtn.innerHTML = '✅ 充值成功！';
-          rechargeBtn.style.background = '#28a745';
+          // Store order ID
+          currentOrderId = result.orderId;
           
-          setTimeout(() => {
-            alert(`🎉 充值成功！\n\n新余额: ¥${result.newBalance.toFixed(2)}\n\n感谢您的支持！`);
-            loadProfile();
-            
-            // Reset button
-            setTimeout(() => {
-              rechargeBtn.disabled = false;
-              rechargeBtn.innerHTML = '💰 立即充值（演示版-自动到账）';
-              rechargeBtn.style.background = '';
-            }, 1000);
-          }, 500);
-        } else {
-          alert('❌ 充值失败: ' + result.error);
+          // Show payment modal with QR code
+          showPaymentModal(result, amount);
+          
+          // Reset button
           rechargeBtn.disabled = false;
-          rechargeBtn.innerHTML = '💰 立即充值（演示版-自动到账）';
+          rechargeBtn.innerHTML = '💰 立即充值';
+        } else {
+          alert('❌ 创建订单失败: ' + result.error);
+          rechargeBtn.disabled = false;
+          rechargeBtn.innerHTML = '💰 立即充值';
         }
       } catch (error) {
         console.error('充值错误:', error);
-        alert('❌ 充值失败，请稍后重试');
+        alert('❌ 创建订单失败，请稍后重试');
         rechargeBtn.disabled = false;
-        rechargeBtn.innerHTML = '💰 立即充值（演示版-自动到账）';
+        rechargeBtn.innerHTML = '💰 立即充值';
+      }
+    }
+    
+    function showPaymentModal(paymentData, amount) {
+      const modal = document.getElementById('paymentModal');
+      const qrCodeImage = document.getElementById('qrCodeImage');
+      const paymentTitle = document.getElementById('paymentTitle');
+      const paymentAmount = document.getElementById('paymentAmount');
+      const paymentOrderId = document.getElementById('paymentOrderId');
+      const paymentInstructions = document.getElementById('paymentInstructions');
+      const mockSection = document.getElementById('mockPaymentSection');
+      const modeIndicator = document.getElementById('paymentModeIndicator');
+      
+      // Set payment title
+      if (paymentData.paymentType === 'wechat') {
+        paymentTitle.textContent = '💚 微信扫码支付';
+        paymentInstructions.textContent = '请使用微信扫一扫完成支付';
+      } else if (paymentData.paymentType === 'alipay') {
+        paymentTitle.textContent = '💙 支付宝扫码支付';
+        paymentInstructions.textContent = '请使用支付宝扫一扫完成支付';
+      }
+      
+      // Set QR code
+      if (paymentData.qrCode) {
+        qrCodeImage.src = paymentData.qrCode;
+      }
+      
+      // Set amount and order ID
+      paymentAmount.textContent = `¥${amount.toFixed(2)}`;
+      paymentOrderId.textContent = `订单号: ${paymentData.orderId}`;
+      
+      // Show mock section if in mock mode
+      if (paymentData.mockMode) {
+        mockSection.style.display = 'block';
+        modeIndicator.innerHTML = '<span style="color: #ffc107;">⚠️ 演示模式 - 点击"模拟支付成功"按钮测试</span>';
+      } else {
+        mockSection.style.display = 'none';
+        modeIndicator.innerHTML = '<span style="color: #28a745;">✓ 真实支付渠道已接入</span>';
+      }
+      
+      // Show modal
+      modal.style.display = 'flex';
+      
+      // Start checking payment status (every 3 seconds)
+      startPaymentStatusCheck();
+    }
+    
+    function closePaymentModal() {
+      const modal = document.getElementById('paymentModal');
+      modal.style.display = 'none';
+      currentOrderId = null;
+      stopPaymentStatusCheck();
+    }
+    
+    function startPaymentStatusCheck() {
+      stopPaymentStatusCheck();
+      paymentCheckInterval = setInterval(checkPaymentStatus, 3000);
+    }
+    
+    function stopPaymentStatusCheck() {
+      if (paymentCheckInterval) {
+        clearInterval(paymentCheckInterval);
+        paymentCheckInterval = null;
+      }
+    }
+    
+    async function checkPaymentStatus() {
+      if (!currentOrderId) return;
+      
+      const token = localStorage.getItem('token');
+      const statusDiv = document.getElementById('paymentStatus');
+      
+      try {
+        statusDiv.innerHTML = '🔄 检查支付状态中...';
+        statusDiv.style.background = '#d1ecf1';
+        statusDiv.style.color = '#0c5460';
+        
+        const response = await fetch(`${API_BASE}/api/payment/query-order/${currentOrderId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.paid) {
+          // Payment successful
+          stopPaymentStatusCheck();
+          statusDiv.innerHTML = '✅ 支付成功！';
+          statusDiv.style.background = '#d4edda';
+          statusDiv.style.color = '#155724';
+          
+          setTimeout(() => {
+            closePaymentModal();
+            alert('🎉 充值成功！正在刷新页面...');
+            loadProfile();
+          }, 1500);
+        } else {
+          statusDiv.innerHTML = '⏳ 等待支付中...';
+          statusDiv.style.background = '#fff3cd';
+          statusDiv.style.color = '#856404';
+        }
+      } catch (error) {
+        console.error('查询支付状态错误:', error);
+        statusDiv.innerHTML = '❌ 查询失败，请重试';
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.color = '#721c24';
+      }
+    }
+    
+    async function mockConfirmPayment() {
+      if (!currentOrderId) return;
+      
+      const token = localStorage.getItem('token');
+      const statusDiv = document.getElementById('paymentStatus');
+      
+      try {
+        statusDiv.innerHTML = '⏳ 处理中...';
+        
+        const response = await fetch(`${API_BASE}/api/payment/mock-confirm/${currentOrderId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          stopPaymentStatusCheck();
+          statusDiv.innerHTML = '✅ 支付成功！';
+          statusDiv.style.background = '#d4edda';
+          statusDiv.style.color = '#155724';
+          
+          setTimeout(() => {
+            closePaymentModal();
+            alert(`🎉 充值成功！\n\n新余额: ¥${result.newBalance.toFixed(2)}`);
+            loadProfile();
+          }, 1000);
+        } else {
+          alert('❌ 操作失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('模拟支付错误:', error);
+        alert('❌ 操作失败');
       }
     }
 

@@ -58,6 +58,10 @@ app.use('/api/auth', authRoutes);
 const membershipRoutes = require('./routes/membership-routes');
 app.use('/api/membership', membershipRoutes);
 
+// Payment routes (IJPay integration)
+const paymentRoutes = require('./routes/payment-routes');
+app.use('/api/payment', paymentRoutes);
+
 // Multer configuration for file upload
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {

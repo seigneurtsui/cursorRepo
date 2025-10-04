@@ -139,10 +139,23 @@ const initializeDatabase = async () => {
         status VARCHAR(50) DEFAULT 'pending',
         description TEXT,
         metadata JSONB,
+        order_id VARCHAR(100),
+        transaction_no VARCHAR(100),
+        completed_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
     console.log('✅ Created table: transactions');
+    
+    // Add new columns if table already exists
+    await client.query(`
+      ALTER TABLE transactions ADD COLUMN IF NOT EXISTS order_id VARCHAR(100);
+      ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_no VARCHAR(100);
+      ALTER TABLE transactions ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;
+      
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(order_id) WHERE order_id IS NOT NULL;
+    `);
+    console.log('✅ Updated transactions table with IJPay columns');
 
     // Create usage_logs table (使用记录 - 用于扣费)
     await client.query(`

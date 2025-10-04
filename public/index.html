@@ -596,6 +596,7 @@
                             <select 
                                 id="sortBy" 
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onchange="applyFilters()"
                             >
                                 <option value="published_at">发布日期</option>
                                 <option value="view_count">观看数</option>
@@ -608,6 +609,7 @@
                             <select 
                                 id="sortOrder" 
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onchange="applyFilters()"
                             >
                                 <option value="DESC">降序</option>
                                 <option value="ASC">升序</option>
@@ -1454,9 +1456,80 @@
         document.getElementById('copy-description-btn').addEventListener('click', () => {
             const text = document.getElementById('modal-body').textContent;
             navigator.clipboard.writeText(text).then(() => {
-                alert('已复制到剪贴板');
+                showCopySuccessNotification();
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
             });
         });
+        
+        // 显示复制成功的美化通知
+        function showCopySuccessNotification() {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                min-width: 280px;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                padding: 16px 20px;
+                border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(16, 185, 129, 0.4);
+                z-index: 10000;
+                animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="
+                        width: 40px;
+                        height: 40px;
+                        background: rgba(255, 255, 255, 0.2);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 20px;
+                        flex-shrink: 0;
+                    ">📋</div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 16px; font-weight: 600;">
+                            ✅ 已复制到剪贴板
+                        </div>
+                        <div style="font-size: 13px; opacity: 0.9; margin-top: 2px;">
+                            描述内容已成功复制
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" style="
+                        background: rgba(255, 255, 255, 0.2);
+                        border: none;
+                        color: white;
+                        width: 24px;
+                        height: 24px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        font-size: 16px;
+                        line-height: 1;
+                        padding: 0;
+                        transition: all 0.3s;
+                    " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // 3秒后自动消失
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.4s ease-in-out';
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 400);
+            }, 3000);
+        }
 
         // ========== 频道选择（美化版）==========
         function openChannelModal() {

@@ -282,7 +282,8 @@ router.post('/test', authenticate, async (req, res) => {
   const { channel } = req.body;
   
   try {
-    const notificationService = require('../services/notification');
+    const NotificationService = require('../services/notification');
+    const notificationService = new NotificationService();
     const userResult = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
     const user = userResult.rows[0];
     
